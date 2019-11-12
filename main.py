@@ -30,13 +30,20 @@ def run():
             print("Certainty: ", certainty)
             # print("Levenshtein Distance: ", min_distance)
             if certainty > .5:
-                add_comment(ac_post, relevant_post, certainty)
+                try:
+                    if username not in [comment.author.name for comment in ac_post.comments]:
+                        add_comment(ac_post, relevant_post, certainty)
+                    else:
+                        print("Already commented")
+                except:
+                    print("Was rate limited")
+                    pass
 
 
 def add_comment(ac_post, relevant_post, certainty):
-    reply_template = "Relevant r/chess post: [{}](https://www.reddit.com{})\n".format(relevant_post.title, relevant_post.permalink)
-    certainty_tag = "Certainty: {}%\n".format(round(certainty*100, 2))
-    bot_tag = "^I ^am ^a ^bot ^created ^by ^/u/fmhall, ^inspired ^by ^[this comment.]({})\n".format("https://www.reddit.com/r/AnarchyChess/comments/durvcj/dude_doesnt_play_chess_thinks_he_can_beat_magnus/f78cga9")
+    reply_template = "Relevant r/chess post: [{}](https://www.reddit.com{})\n\n".format(relevant_post.title, relevant_post.permalink)
+    certainty_tag = "Certainty: {}%\n\n".format(round(certainty*100, 2))
+    bot_tag = "^I ^am ^a ^bot ^created ^by ^/u/fmhall, ^inspired ^by [this comment.]({})\n\n".format("https://www.reddit.com/r/AnarchyChess/comments/durvcj/dude_doesnt_play_chess_thinks_he_can_beat_magnus/f78cga9")
     github_tag = "^(I use the Levenshtein distance of both titles to determine relevance. \
                     You can find my source code [here]({}))".format("https://github.com/fmhall/relevant-post-bot")
     comment = reply_template + certainty_tag + bot_tag + github_tag
