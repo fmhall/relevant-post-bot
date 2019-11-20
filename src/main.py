@@ -9,6 +9,7 @@ secret = os.getenv("CLIENT_SECRET")
 username = os.getenv("USERNAME")
 password = os.getenv("PASSWORD")
 
+
 def run():
     reddit = praw.Reddit(user_agent='RelevantChessPostBot',
                          client_id=client, client_secret=secret,
@@ -18,7 +19,7 @@ def run():
     for ac_post in anarchychess.stream.submissions():
         print("Analyzing post: ", ac_post.title)
         relevant_post, min_distance = get_min_levenshtein(ac_post, chess)
-        sim_bool, similarity = is_similar(ac_post, relevant_post, .5)
+        sim_bool, similarity = is_similar(ac_post, relevant_post, .4)
         if relevant_post and sim_bool:
             max_length = float(max(len(ac_post.title.split()), len(relevant_post.title.split())))
             print(min_distance)
@@ -28,8 +29,7 @@ def run():
             print("AC title: ", ac_post.title)
             print("C title: ", relevant_post.title)
             print("Certainty: ", certainty)
-            # print("Levenshtein Distance: ", min_distance)
-            if certainty > .5:
+            if certainty > .4:
                 try:
                     if username not in [comment.author.name for comment in ac_post.comments]:
                         add_comment(ac_post, relevant_post, certainty)
@@ -41,15 +41,16 @@ def run():
 
 
 def add_comment(ac_post, relevant_post, certainty):
-    reply_template = "Relevant r/chess post: [{}](https://www.reddit.com{})\n\n".format(relevant_post.title, relevant_post.permalink)
-    certainty_tag = "Certainty: {}%\n\n".format(round(certainty*100, 2))
-    bot_tag = "^I ^am ^a ^bot ^created ^by ^(/u/fmhall), ^inspired ^by [^(this comment.)]({})\n\n".format("https://www.reddit.com/r/AnarchyChess/comments/durvcj/dude_doesnt_play_chess_thinks_he_can_beat_magnus/f78cga9")
-    github_tag = "^(I use the Levenshtein distance of both titles to determine relevance. \
-                    You can find my source code [here]({}))".format("https://github.com/fmhall/relevant-post-bot")
+    reply_template = "Relevant r/chess post: [{}](https://www.reddit.com{})\n\n".format(relevant_post.title,
+                                                                                        relevant_post.permalink)
+    certainty_tag = "Certainty: {}%\n\n".format(round(certainty * 100, 2))
+    bot_tag = "^I ^am ^a ^bot ^created ^by ^(^(/u/fmhall)), ^inspired ^by [^(this comment.)]({})\n\n".format(
+        "https://www.reddit.com/r/AnarchyChess/comments/durvcj/dude_doesnt_play_chess_thinks_he_can_beat_magnus/f78cga9")
+    github_tag = ("^(I use the Levenshtein distance of both titles to determine relevance."
+                  "\nYou can find my source code [here]({}))".format("https://github.com/fmhall/relevant-post-bot"))
     comment = reply_template + certainty_tag + bot_tag + github_tag
     ac_post.reply(comment)
     print(comment)
-    pass
 
 
 def get_min_levenshtein(ac_post, chess):
@@ -58,7 +59,6 @@ def get_min_levenshtein(ac_post, chess):
     relevant_post = None
     for c_post in chess.hot():
         c_title = c_post.title
-        # print(c_title)
         distance = levenshtein(ac_title.split(), c_title.split())
         if distance < min_distance:
             min_distance = distance
@@ -73,10 +73,8 @@ def is_similar(ac_post, c_post, factor):
     sim_ratio = similarity / len(ac_title_set)
 
     if sim_ratio > factor:
-        # print("AC title set: ", ac_title_set)
-        # print("C title set: ", c_title_set)
-        # print("Sim ratio: ", sim_ratio)
         return True, sim_ratio
+
     return False, 0
 
 
@@ -90,15 +88,16 @@ def levenshtein(seq1, seq2):
         matrix[0, y] = y
     for x in range(1, size_x):
         for y in range(1, size_y):
-            if seq1[x-1] == seq2[y-1]:
-                matrix[x, y] = min(matrix[x-1, y] + 1, matrix[x-1, y-1], matrix[x, y-1] + 1)
+            if seq1[x - 1] == seq2[y - 1]:
+                matrix[x, y] = min(matrix[x - 1, y] + 1, matrix[x - 1, y - 1], matrix[x, y - 1] + 1)
             else:
                 matrix[x, y] = min(
-                    matrix[x-1, y] + 1,
-                    matrix[x-1, y-1] + 1,
-                    matrix[x, y-1] + 1
+                    matrix[x - 1, y] + 1,
+                    matrix[x - 1, y - 1] + 1,
+                    matrix[x, y - 1] + 1
                 )
     return matrix[size_x - 1, size_y - 1]
 
 
-run()
+if __name__ == "__main__":
+    run()

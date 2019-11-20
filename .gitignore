@@ -1,3 +1,4 @@
 env/
 .idea/
-.env
+src/.env
+build.sh
