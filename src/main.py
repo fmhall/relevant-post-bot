@@ -1,54 +1,91 @@
-import praw
+from praw import Reddit
+from praw.models import Submission
+from praw.reddit import Subreddit
 from dotenv import load_dotenv
 import os
 import numpy as np
 import pickledb
+from typing import Union, Tuple
 
+# I've saved my API token information to a .env file, which gets loaded here
 load_dotenv()
 client = os.getenv("CLIENT_ID")
 secret = os.getenv("CLIENT_SECRET")
 username = os.getenv("USERNAME")
 password = os.getenv("PASSWORD")
+
+# Set the path absolute path of the chess_post database
 pickle_path = os.path.dirname(os.path.abspath(__file__)) + '/chess_posts.db'
 db = pickledb.load(pickle_path, True)
-reddit = praw.Reddit(user_agent='RelevantChessPostBot',
-                     client_id=client, client_secret=secret,
-                     username=username, password=password)
+
+# Create the reddit object instance using Praw
+reddit = Reddit(user_agent='RelevantChessPostBot',
+                client_id=client, client_secret=secret,
+                username=username, password=password)
+# Constants
+CERTAINTY_THRESHOLD = .50
+SIMILARITY_THRESHOLD = .40
 
 
 def run():
-    chess = reddit.subreddit('chess')
-    anarchychess = reddit.subreddit('anarchychess')
+    # Instantiate the subreddit instances
+    chess: Subreddit = reddit.subreddit('chess')
+    anarchychess: Subreddit = reddit.subreddit('anarchychess')
+
+    # This loops forever, streaming submissions in real time from r/anarchychess as they get posted
     for ac_post in anarchychess.stream.submissions():
         print("Analyzing post: ", ac_post.title)
+
+        # Gets the r/chess post in hot with the minimum levenshtein distance
         relevant_post, min_distance = get_min_levenshtein(ac_post, chess)
-        sim_bool, similarity = is_similar(ac_post, relevant_post, .4)
+
+        # Are the post's words similar and to what degree?
+        sim_bool, similarity = is_similar(ac_post, relevant_post, SIMILARITY_THRESHOLD)
+
         if relevant_post and sim_bool:
             max_length = float(max(len(ac_post.title.split()), len(relevant_post.title.split())))
-            print(min_distance)
-            print(max_length)
-            print(similarity)
+
+            # Certainty is calculated with this arbitrary formula that seems to work well
             certainty = similarity * (1 - (min_distance / max_length))
+
+            # Log useful stats
+            print("Minimum distance:", min_distance)
+            print("Maximum length:", max_length)
+            print("Similarity:", similarity)
             print("AC title: ", ac_post.title)
             print("C title: ", relevant_post.title)
             print("Certainty: ", certainty)
-            if certainty > .5:
+
+            if certainty > CERTAINTY_THRESHOLD:
                 try:
-                    if username not in [comment.author.name for comment in ac_post.comments]:
+                    if ac_post.comments and username not in [comment.author.name for comment in ac_post.comments]:
                         add_comment(ac_post, relevant_post, certainty)
                     else:
                         print("Already commented")
-                except:
-                    print("Was rate limited")
+
+                except Exception as e:
+                    print("Was rate limited", e)
                     pass
+
+                # update the original r/chess post's comment with the relevant AC posts
                 try:
                     add_chess_comment(relevant_post, ac_post)
-                except:
-                    print("Was rate limited")
+
+                except Exception as e:
+                    print("Was rate limited", e)
                     pass
 
 
-def add_comment(ac_post, relevant_post, certainty):
+def add_comment(ac_post: Submission, relevant_post: Submission, certainty) -> None:
+    """
+    Adds a comment to the AnarchyChess post. If anyone knows how to format it so my username is also superscripted,
+    please submit a PR.
+
+    :param ac_post: AnarchyChess post
+    :param relevant_post: Chess post
+    :param certainty: Certainty metric
+    :return: None
+    """
     reply_template = "Relevant r/chess post: [{}](https://www.reddit.com{})\n\n".format(relevant_post.title,
                                                                                         relevant_post.permalink)
     certainty_tag = "Certainty: {}%\n\n".format(round(certainty * 100, 2))
@@ -61,17 +98,22 @@ def add_comment(ac_post, relevant_post, certainty):
     print(comment)
 
 
-def add_chess_comment(relevant_post, ac_post):
+def add_chess_comment(relevant_post: Submission, ac_post: Submission) -> None:
     rpid = str(relevant_post.id)
     acpid = str(ac_post.id)
     if not db.get(rpid):
         db.set(rpid, [acpid])
     else:
         rid_list = db.get(rpid)
-        rid_list.append(acpid)
+        rid_list = list(set(rid_list))
+        if acpid not in rid_list:
+            rid_list.append(acpid)
         db.set(rpid, rid_list)
     posts = [reddit.submission(id=p) for p in db.get(rpid)]
-    posts_string = "".join(["[{}](https://www.reddit.com{})\n\n".format(p.title, p.permalink) for p in posts])
+    posts.sort(key=lambda x: x.score, reverse=True)
+    posts_string = "".join(
+        ["[{} upvotes][{}](https://www.reddit.com{}) by {}\n\n".format(p.score, p.title, p.permalink, p.author) for p in
+         posts])
     reply_template = "This post has been parodied on r/anarchychess.\n\n" \
                      "Relevant r/anarchychess posts: \n\n{}".format(posts_string)
 
@@ -79,16 +121,26 @@ def add_chess_comment(relevant_post, ac_post):
         "https://www.reddit.com/r/AnarchyChess/comments/durvcj/dude_doesnt_play_chess_thinks_he_can_beat_magnus/f78cga9")
     github_tag = ("^(I use the Levenshtein distance of both titles to determine relevance."
                   "\nYou can find my source code [here]({}))".format("https://github.com/fmhall/relevant-post-bot"))
-    comment = reply_template + bot_tag + github_tag
-    if username not in [comment.author.name for comment in relevant_post.comments]:
-        relevant_post.reply(comment)
+    comment_string = reply_template + bot_tag + github_tag
+    if relevant_post.comments and username not in [comment.author.name for comment in relevant_post.comments]:
+        relevant_post.reply(comment_string)
     else:
-        relevant_post.edit(comment)
-    print(comment)
+        for comment in relevant_post.comments:
+            if comment.author.name == username:
+                comment.edit(comment_string)
+                print("edited")
+    print(comment_string)
 
 
-def get_min_levenshtein(ac_post, chess):
-    ac_title = ac_post.title
+def get_min_levenshtein(ac_post: Submission, chess: Subreddit) -> (Submission, float):
+    """
+    This function iterates through the hot posts in the Chess subreddit and finds the one with the smallest levenshtein
+    distance to the AnarchyChess post.
+    :param ac_post: AnarchyChess post
+    :param chess: Chess subreddit
+    :return: tuple with the r/chess post with the smallest LD, and the distance
+    """
+    ac_title: str = ac_post.title
     min_distance = 100000
     relevant_post = None
     for c_post in chess.hot():
@@ -100,19 +152,36 @@ def get_min_levenshtein(ac_post, chess):
     return relevant_post, min_distance
 
 
-def is_similar(ac_post, c_post, factor):
+def is_similar(ac_post: Submission, c_post: Submission, factor: float) -> Tuple[bool, float]:
+    """
+
+    :param ac_post: AnarchyChess post
+    :param c_post: Chess post
+    :param factor: float indicating smallest proportion of similar words
+    :return: boolean indicating if the proportion is similar and the proportion of words the posts
+    share divided by the length of the longer post
+    """
     ac_title_set = set(ac_post.title.split())
     c_title_set = set(c_post.title.split())
     similarity = len(ac_title_set.intersection(c_title_set))
-    sim_ratio = similarity / len(ac_title_set)
+    sim_ratio = similarity / max(len(ac_title_set), len(c_title_set))
 
     if sim_ratio > factor:
         return True, sim_ratio
 
-    return False, 0
+    return False, 0.0
 
 
-def levenshtein(seq1, seq2):
+def levenshtein(seq1: list, seq2: list) -> float:
+    """
+    The Levenshtein distance is a string metric for measuring the difference between two sequences. Informally,
+    the Levenshtein distance between two words is the minimum number of single-character edits (i.e. insertions,
+    deletions, or substitutions) required to change one word into the other. While it is normally used to compare
+    characters in a sequence, if you treat each word in a sentence like a character, then it can be used on sentences.
+    :param seq1: First sentence
+    :param seq2: Second sentence
+    :return: The levenshtein distance between the two
+    """
     size_x = len(seq1) + 1
     size_y = len(seq2) + 1
     matrix = np.zeros((size_x, size_y))
@@ -130,7 +199,7 @@ def levenshtein(seq1, seq2):
                     matrix[x - 1, y - 1] + 1,
                     matrix[x, y - 1] + 1
                 )
-    return matrix[size_x - 1, size_y - 1]
+    return float(matrix[size_x - 1, size_y - 1])
 
 
 if __name__ == "__main__":
