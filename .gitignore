@@ -1,4 +1,6 @@
 env/
 .idea/
 src/.env
+src/__pycache__/
 build.sh
+tests/

@@ -1,7 +1,6 @@
-FROM frolvlad/alpine-python3
+FROM jackton1/alpine-python3-numpy-pandas
 
 COPY src app/src
-RUN apk add build-base automake libtool libffi-dev python3-dev linux-headers
 RUN pip3 install -r app/src/requirements.txt
 
 WORKDIR /app/src/

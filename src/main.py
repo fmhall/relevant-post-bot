@@ -58,10 +58,10 @@ def run():
 
             if certainty > CERTAINTY_THRESHOLD:
                 try:
-                    if ac_post.comments and username not in [comment.author.name for comment in ac_post.comments]:
-                        add_comment(ac_post, relevant_post, certainty)
-                    else:
+                    if ac_post.comments and username in [comment.author.name for comment in ac_post.comments]:
                         print("Already commented")
+                    else:
+                        add_comment(ac_post, relevant_post, certainty)
 
                 except Exception as e:
                     print("Was rate limited", e)
