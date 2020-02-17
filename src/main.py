@@ -1,18 +1,18 @@
+import os
+from typing import Tuple
 from praw import Reddit
 from praw.models import Submission
 from praw.reddit import Subreddit
 from dotenv import load_dotenv
-import os
 import numpy as np
 import pickledb
-from typing import Union, Tuple
 
 # I've saved my API token information to a .env file, which gets loaded here
 load_dotenv()
-client = os.getenv("CLIENT_ID")
-secret = os.getenv("CLIENT_SECRET")
-username = os.getenv("USERNAME")
-password = os.getenv("PASSWORD")
+CLIENT = os.getenv("CLIENT_ID")
+SECRET = os.getenv("CLIENT_SECRET")
+USERNAME = os.getenv("USERNAME")
+PASSWORD = os.getenv("PASSWORD")
 
 # Set the path absolute path of the chess_post database
 pickle_path = os.path.dirname(os.path.abspath(__file__)) + '/chess_posts.db'
@@ -20,14 +20,17 @@ db = pickledb.load(pickle_path, True)
 
 # Create the reddit object instance using Praw
 reddit = Reddit(user_agent='RelevantChessPostBot',
-                client_id=client, client_secret=secret,
-                username=username, password=password)
+                client_id=CLIENT, client_secret=SECRET,
+                username=USERNAME, password=PASSWORD)
 # Constants
 CERTAINTY_THRESHOLD = .50
 SIMILARITY_THRESHOLD = .40
 
 
 def run():
+    """
+    The main loop of the program, called by the docker entrypoint
+    """
     # Instantiate the subreddit instances
     chess: Subreddit = reddit.subreddit('chess')
     anarchychess: Subreddit = reddit.subreddit('anarchychess')
@@ -58,22 +61,21 @@ def run():
 
             if certainty > CERTAINTY_THRESHOLD:
                 try:
-                    if ac_post.comments and username in [comment.author.name for comment in ac_post.comments]:
+                    if ac_post.comments and USERNAME in [comment.author.name for comment in ac_post.comments]:
                         print("Already commented")
                     else:
                         add_comment(ac_post, relevant_post, certainty)
 
-                except Exception as e:
-                    print("Was rate limited", e)
+                except Exception as error:
+                    print("Was rate limited", error)
                     pass
 
                 # update the original r/chess post's comment with the relevant AC posts
                 try:
                     add_chess_comment(relevant_post, ac_post)
 
-                except Exception as e:
-                    print("Was rate limited", e)
-                    pass
+                except Exception as error:
+                    print("Was rate limited", error)
 
 
 def add_comment(ac_post: Submission, relevant_post: Submission, certainty) -> None:
@@ -99,6 +101,14 @@ def add_comment(ac_post: Submission, relevant_post: Submission, certainty) -> No
 
 
 def add_chess_comment(relevant_post: Submission, ac_post: Submission) -> None:
+    """
+    Adds a comment to the Chess post. If anyone knows how to format it so my username is also superscripted,
+    please submit a PR.
+
+    :param relevant_post: Chess post
+    :param ac_post: AnarchyChess post
+    :return: None
+    """
     rpid = str(relevant_post.id)
     acpid = str(ac_post.id)
     if not db.get(rpid):
@@ -122,11 +132,11 @@ def add_chess_comment(relevant_post: Submission, ac_post: Submission) -> None:
     github_tag = ("^(I use the Levenshtein distance of both titles to determine relevance."
                   "\nYou can find my source code [here]({}))".format("https://github.com/fmhall/relevant-post-bot"))
     comment_string = reply_template + bot_tag + github_tag
-    if relevant_post.comments and username not in [comment.author.name for comment in relevant_post.comments]:
+    if relevant_post.comments and USERNAME not in [comment.author.name for comment in relevant_post.comments]:
         relevant_post.reply(comment_string)
     else:
         for comment in relevant_post.comments:
-            if comment.author.name == username:
+            if comment.author.name == USERNAME:
                 comment.edit(comment_string)
                 print("edited")
     print(comment_string)
