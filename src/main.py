@@ -112,7 +112,7 @@ def add_chess_comment(relevant_post: Submission, ac_post: Submission) -> None:
     posts = [reddit.submission(id=p) for p in db.get(rpid)]
     posts.sort(key=lambda x: x.score, reverse=True)
     posts_string = "".join(
-        ["[{} upvotes][{}](https://www.reddit.com{}) by {}\n\n".format(p.score, p.title, p.permalink, p.author) for p in
+        ["[{}](https://www.reddit.com{}) by {}\n\n".format(p.title, p.permalink, p.author) for p in
          posts])
     reply_template = "This post has been parodied on r/anarchychess.\n\n" \
                      "Relevant r/anarchychess posts: \n\n{}".format(posts_string)
