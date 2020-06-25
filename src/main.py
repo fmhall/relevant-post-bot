@@ -39,7 +39,6 @@ def run():
 
     # This loops forever, streaming submissions in real time from r/anarchychess as they get posted
     for ac_post in anarchychess.stream.submissions():
-        ac_post = cast(ac_post, Submission)
         print("Analyzing post: ", ac_post.title)
 
         # Gets the r/chess post in hot with the minimum levenshtein distance
