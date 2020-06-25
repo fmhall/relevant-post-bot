@@ -2,10 +2,12 @@ import os
 from typing import Tuple
 from praw import Reddit
 from praw.models import Submission
-from praw.reddit import Subreddit
+from praw.models import Subreddit
 from dotenv import load_dotenv
 import numpy as np
 import pickledb
+from typing import cast, Iterator
+
 
 # I've saved my API token information to a .env file, which gets loaded here
 load_dotenv()
@@ -37,6 +39,7 @@ def run():
 
     # This loops forever, streaming submissions in real time from r/anarchychess as they get posted
     for ac_post in anarchychess.stream.submissions():
+        ac_post = cast(ac_post, Submission)
         print("Analyzing post: ", ac_post.title)
 
         # Gets the r/chess post in hot with the minimum levenshtein distance
@@ -50,6 +53,10 @@ def run():
 
             # Certainty is calculated with this arbitrary formula that seems to work well
             certainty = similarity * (1 - (min_distance / max_length))
+
+            # Continue to next post if crosspost
+            if is_crosspost(ac_post, relevant_post):
+                continue
 
             # Log useful stats
             print("Minimum distance:", min_distance)
@@ -210,6 +217,15 @@ def levenshtein(seq1: list, seq2: list) -> float:
                     matrix[x, y - 1] + 1
                 )
     return float(matrix[size_x - 1, size_y - 1])
+
+
+def is_crosspost(ac_post: Submission, relevant_post: Submission) -> bool:
+    duplicates: Iterator[Submission] = ac_post.duplicates()
+    for duplicate in duplicates:
+        if duplicate.id == relevant_post.id:
+            print("Post is a cross-post, not commenting")
+            return True
+    return False
 
 
 if __name__ == "__main__":
