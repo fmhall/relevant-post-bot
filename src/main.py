@@ -17,16 +17,31 @@ USERNAME = os.getenv("USERNAME")
 PASSWORD = os.getenv("PASSWORD")
 
 # Set the path absolute path of the chess_post database
-pickle_path = os.path.dirname(os.path.abspath(__file__)) + '/chess_posts.db'
+pickle_path = os.path.dirname(os.path.abspath(__file__)) + "/chess_posts.db"
 db = pickledb.load(pickle_path, True)
 
 # Create the reddit object instance using Praw
-reddit = Reddit(user_agent='RelevantChessPostBot',
-                client_id=CLIENT, client_secret=SECRET,
-                username=USERNAME, password=PASSWORD)
+reddit = Reddit(
+    user_agent="RelevantChessPostBot",
+    client_id=CLIENT,
+    client_secret=SECRET,
+    username=USERNAME,
+    password=PASSWORD,
+)
 # Constants
-CERTAINTY_THRESHOLD = .50
-SIMILARITY_THRESHOLD = .40
+CERTAINTY_THRESHOLD = 0.50
+SIMILARITY_THRESHOLD = 0.40
+
+BOT_TAG = "^I ^am ^a ^bot ^created ^by ^/u/fmhall, ^inspired ^by [^(this comment.)]({})\n\n".format(
+    "https://www.reddit.com/r/AnarchyChess/comments/durvcj/dude_doesnt_play_chess_thinks_he_can_beat_magnus/f78cga9"
+)
+
+GITHUB_TAG = (
+    "^I ^use ^the ^Levenshtein ^distance ^of ^both ^titles ^to vdetermine ^relevance."
+    "\n^You ^can ^find ^my ^source ^code [^(here)]({})".format(
+        "https://github.com/fmhall/relevant-post-bot"
+    )
+)
 
 
 def run():
@@ -34,8 +49,8 @@ def run():
     The main loop of the program, called by the docker entrypoint
     """
     # Instantiate the subreddit instances
-    chess: Subreddit = reddit.subreddit('chess')
-    anarchychess: Subreddit = reddit.subreddit('anarchychess')
+    chess: Subreddit = reddit.subreddit("chess")
+    anarchychess: Subreddit = reddit.subreddit("anarchychess")
 
     # This loops forever, streaming submissions in real time from r/anarchychess as they get posted
     for ac_post in anarchychess.stream.submissions():
@@ -48,7 +63,9 @@ def run():
         sim_bool, similarity = is_similar(ac_post, relevant_post, SIMILARITY_THRESHOLD)
 
         if relevant_post and sim_bool:
-            max_length = float(max(len(ac_post.title.split()), len(relevant_post.title.split())))
+            max_length = float(
+                max(len(ac_post.title.split()), len(relevant_post.title.split()))
+            )
 
             # Certainty is calculated with this arbitrary formula that seems to work well
             certainty = similarity * (1 - (min_distance / max_length))
@@ -67,7 +84,9 @@ def run():
 
             if certainty > CERTAINTY_THRESHOLD:
                 try:
-                    if ac_post.comments and USERNAME in [comment.author.name for comment in ac_post.comments]:
+                    if ac_post.comments and USERNAME in [
+                        comment.author.name for comment in ac_post.comments
+                    ]:
                         print("Already commented")
                     else:
                         add_comment(ac_post, relevant_post, certainty)
@@ -94,14 +113,11 @@ def add_comment(ac_post: Submission, relevant_post: Submission, certainty) -> No
     :param certainty: Certainty metric
     :return: None
     """
-    reply_template = "Relevant r/chess post: [{}](https://www.reddit.com{})\n\n".format(relevant_post.title,
-                                                                                        relevant_post.permalink)
+    reply_template = "Relevant r/chess post: [{}](https://www.reddit.com{})\n\n".format(
+        relevant_post.title, relevant_post.permalink
+    )
     certainty_tag = "Certainty: {}%\n\n".format(round(certainty * 100, 2))
-    bot_tag = "^I ^am ^a ^bot ^created ^by ^(^(/u/fmhall)), ^inspired ^by [^(this comment.)]({})\n\n".format(
-        "https://www.reddit.com/r/AnarchyChess/comments/durvcj/dude_doesnt_play_chess_thinks_he_can_beat_magnus/f78cga9")
-    github_tag = ("^(I use the Levenshtein distance of both titles to determine relevance."
-                  "\nYou can find my source code [here]({}))".format("https://github.com/fmhall/relevant-post-bot"))
-    comment = reply_template + certainty_tag + bot_tag + github_tag
+    comment = reply_template + certainty_tag + BOT_TAG + GITHUB_TAG
     ac_post.reply(comment)
     print(comment)
 
@@ -128,17 +144,22 @@ def add_chess_comment(relevant_post: Submission, ac_post: Submission) -> None:
     posts = [reddit.submission(id=p) for p in db.get(rpid)]
     posts.sort(key=lambda x: x.score, reverse=True)
     posts_string = "".join(
-        ["[{}](https://www.reddit.com{}) by {}\n\n".format(p.title, p.permalink, p.author) for p in
-         posts])
-    reply_template = "This post has been parodied on r/anarchychess.\n\n" \
-                     "Relevant r/anarchychess posts: \n\n{}".format(posts_string)
+        [
+            "[{}](https://www.reddit.com{}) by {}\n\n".format(
+                p.title, p.permalink, p.author
+            )
+            for p in posts
+        ]
+    )
+    reply_template = (
+        "This post has been parodied on r/anarchychess.\n\n"
+        "Relevant r/anarchychess posts: \n\n{}".format(posts_string)
+    )
 
-    bot_tag = "^I ^am ^a ^bot ^created ^by ^/u/fmhall, ^inspired ^by [^(this comment.)]({})\n\n".format(
-        "https://www.reddit.com/r/AnarchyChess/comments/durvcj/dude_doesnt_play_chess_thinks_he_can_beat_magnus/f78cga9")
-    github_tag = ("^(I use the Levenshtein distance of both titles to determine relevance."
-                  "\nYou can find my source code [here]({}))".format("https://github.com/fmhall/relevant-post-bot"))
-    comment_string = reply_template + bot_tag + github_tag
-    if relevant_post.comments and USERNAME not in [comment.author.name for comment in relevant_post.comments]:
+    comment_string = reply_template + BOT_TAG + GITHUB_TAG
+    if relevant_post.comments and USERNAME not in [
+        comment.author.name for comment in relevant_post.comments
+    ]:
         relevant_post.reply(comment_string)
     else:
         for comment in relevant_post.comments:
@@ -168,7 +189,9 @@ def get_min_levenshtein(ac_post: Submission, chess: Subreddit) -> (Submission, f
     return relevant_post, min_distance
 
 
-def is_similar(ac_post: Submission, c_post: Submission, factor: float) -> Tuple[bool, float]:
+def is_similar(
+    ac_post: Submission, c_post: Submission, factor: float
+) -> Tuple[bool, float]:
     """
 
     :param ac_post: AnarchyChess post
@@ -208,12 +231,12 @@ def levenshtein(seq1: list, seq2: list) -> float:
     for x in range(1, size_x):
         for y in range(1, size_y):
             if seq1[x - 1] == seq2[y - 1]:
-                matrix[x, y] = min(matrix[x - 1, y] + 1, matrix[x - 1, y - 1], matrix[x, y - 1] + 1)
+                matrix[x, y] = min(
+                    matrix[x - 1, y] + 1, matrix[x - 1, y - 1], matrix[x, y - 1] + 1
+                )
             else:
                 matrix[x, y] = min(
-                    matrix[x - 1, y] + 1,
-                    matrix[x - 1, y - 1] + 1,
-                    matrix[x, y - 1] + 1
+                    matrix[x - 1, y] + 1, matrix[x - 1, y - 1] + 1, matrix[x, y - 1] + 1
                 )
     return float(matrix[size_x - 1, size_y - 1])
 
