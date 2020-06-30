@@ -33,8 +33,8 @@ CERTAINTY_THRESHOLD = 0.50
 SIMILARITY_THRESHOLD = 0.40
 
 BOT_TAG = (
-    "^I ^am ^a ^bot ^created ^by [^fmhall](https://www.reddit.com/user/fmhall), ^inspired ^by [^(this "
-    "comment.)]({})\n\n".format(
+    "^I ^am ^a ^bot ^created ^by [^(fmhall,)](https://www.reddit.com/user/fmhall) ^inspired ^by [^(this "
+    "comment.)]({})\n".format(
         "https://www.reddit.com/r/AnarchyChess/comments/durvcj/dude_doesnt_play_chess_thinks_he_can_beat_magnus/f78cga9"
     )
 )
