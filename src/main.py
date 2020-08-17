@@ -180,11 +180,11 @@ def get_min_levenshtein(ac_post: Submission, chess: Subreddit) -> (Submission, f
     :param chess: Chess subreddit
     :return: tuple with the r/chess post with the smallest LD, and the distance
     """
-    ac_title: str = ac_post.title
+    ac_title: str = ac_post.title.lower()
     min_distance = 100000
     relevant_post = None
     for c_post in chess.hot():
-        c_title = c_post.title
+        c_title = c_post.title.lower()
         distance = levenshtein(ac_title.split(), c_title.split())
         if distance < min_distance:
             min_distance = distance
@@ -203,8 +203,8 @@ def is_similar(
     :return: boolean indicating if the proportion is similar and the proportion of words the posts
     share divided by the length of the longer post
     """
-    ac_title_set = set(ac_post.title.split())
-    c_title_set = set(c_post.title.split())
+    ac_title_set = set(ac_post.title.lower().split())
+    c_title_set = set(c_post.title.lower().split())
     similarity = len(ac_title_set.intersection(c_title_set))
     sim_ratio = similarity / max(len(ac_title_set), len(c_title_set))
 
