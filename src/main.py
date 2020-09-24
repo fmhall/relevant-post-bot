@@ -74,7 +74,10 @@ def run():
             certainty = similarity * (1 - (min_distance / max_length))
 
             # Continue to next post if crosspost
-            if is_crosspost(ac_post, relevant_post):
+            if (
+                is_crosspost(ac_post, relevant_post)
+                or ac_post.author == relevant_post.author
+            ):
                 continue
 
             # Log useful stats
@@ -87,9 +90,12 @@ def run():
 
             if certainty > CERTAINTY_THRESHOLD:
                 try:
-                    if ac_post.comments and USERNAME in [
-                        comment.author.name for comment in ac_post.comments
-                    ]:
+                    authors = []
+                    if ac_post.comments:
+                        for comment in ac_post.comments:
+                            if comment.author:
+                                authors.append(comment.author.name)
+                    if USERNAME in authors:
                         print("Already commented")
                     else:
                         add_comment(ac_post, relevant_post, certainty)
@@ -146,29 +152,38 @@ def add_chess_comment(relevant_post: Submission, ac_post: Submission) -> None:
         db.set(rpid, rid_list)
     posts = [reddit.submission(id=p) for p in db.get(rpid)]
     posts.sort(key=lambda x: x.score, reverse=True)
-    posts_string = "".join(
-        [
-            "[{}](https://www.reddit.com{}) by {}\n\n".format(
-                p.title, p.permalink, p.author
+    post_tags = []
+    for post in posts:
+        if post and post.author:
+            post_tags.append(
+                "[{}](https://www.reddit.com{}) by {}\n\n".format(
+                    post.title, post.permalink, post.author
+                )
             )
-            for p in posts
-        ]
-    )
+    posts_string = "".join(post_tags)
     reply_template = (
         "This post has been parodied on r/anarchychess.\n\n"
         "Relevant r/anarchychess posts: \n\n{}".format(posts_string)
     )
 
     comment_string = reply_template + BOT_TAG + GITHUB_TAG
-    if relevant_post.comments and USERNAME not in [
-        comment.author.name for comment in relevant_post.comments
-    ]:
+    authors = []
+    if relevant_post.comments:
+        for comment in relevant_post.comments:
+            if comment.author:
+                authors.append(comment.author.name)
+    if USERNAME not in authors and len(post_tags) > 0:
         relevant_post.reply(comment_string)
     else:
         for comment in relevant_post.comments:
-            if comment.author.name == USERNAME:
-                comment.edit(comment_string)
-                print("edited")
+            if comment.author:
+                if comment.author.name == USERNAME:
+                    if len(post_tags) > 0:
+                        comment.edit(comment_string)
+                        print("edited")
+                    else:
+                        comment.delete()
+                        print("Comment deleted")
     print(comment_string)
 
 
