@@ -80,10 +80,10 @@ def run(
     # Instantiate the subreddit instances
     original_sub: Subreddit = reddit.subreddit(original_sub_name)
     circlejerk_sub: Subreddit = reddit.subreddit(circlejerk_sub_name)
-
+    parody_count = 0
     # This loops forever, streaming submissions in real time from the circlejerk sub as they get posted
     for cj_post in circlejerk_sub.stream.submissions():
-        print("Analyzing post: ", cj_post.title)
+        logger.info(f"Analyzing post: {cj_post.title}")
 
         # Gets the original sub post in hot with the minimum levenshtein distance
         relevant_post, min_distance = get_min_levenshtein(cj_post, original_sub)
@@ -107,13 +107,15 @@ def run(
                 continue
 
             # Log useful stats
-            print("Minimum distance:", min_distance)
-            print("Maximum length:", max_length)
-            print("Similarity:", similarity)
-            print("CJ title: ", cj_post.title)
-            print("RP title: ", relevant_post.title)
-            print("Certainty: ", certainty)
-
+            logger.debug(f"Minimum distance: {min_distance}",)
+            logger.debug(f"Maximum length: {max_length}",)
+            logger.debug(f"Similarity: {similarity}",)
+            logger.debug(f"CJ title: {cj_post.title}")
+            logger.debug(f"RP title: {relevant_post.title}")
+            logger.debug(f"Certainty: {certainty}")
+            if certainty > CERTAINTY_THRESHOLD:
+                parody_count += 1
+                logger.info(f"Parody count: {parody_count}")
             if certainty > CERTAINTY_THRESHOLD and not quiet_mode:
                 try:
                     authors = []
@@ -122,12 +124,12 @@ def run(
                             if comment.author:
                                 authors.append(comment.author.name)
                     if USERNAME in authors:
-                        print("Already commented on CJ post")
+                        logger.info("Already commented on CJ post")
                     else:
                         add_circlejerk_comment(cj_post, relevant_post, certainty)
 
                 except Exception as error:
-                    print("Was rate limited", error)
+                    logger.error(f"Was rate limited: {error}")
                     pass
 
                 # update the original subs post's comment with the relevant CJ posts
@@ -135,7 +137,7 @@ def run(
                     add_original_sub_comment(relevant_post, cj_post)
 
                 except Exception as error:
-                    print("Was rate limited", error)
+                    logger.error(f"Was rate limited: {error}")
 
 
 def add_circlejerk_comment(
@@ -158,7 +160,8 @@ def add_circlejerk_comment(
     certainty_tag = "Certainty: {}%\n\n".format(round(certainty * 100, 2))
     comment = reply_template + certainty_tag + BOT_TAG + GITHUB_TAG
     cj_post.reply(comment)
-    print(comment)
+    logger.debug(comment)
+    logger.info(f"Added comment to {relevant_post.subreddit.display_name}")
 
 
 def add_original_sub_comment(relevant_post: Submission, cj_post: Submission) -> None:
@@ -209,17 +212,17 @@ def add_original_sub_comment(relevant_post: Submission, cj_post: Submission) -> 
         for comment in relevant_post.comments:
             if comment.author:
                 if comment.author.name == USERNAME:
-                    print(comment.body)
+                    logger.debug(comment.body)
                     if comment_string != comment.body:
                         if len(post_tags) > 0:
                             comment.edit(comment_string)
-                            print("edited")
+                            logger.info("edited")
                         else:
                             comment.delete()
-                            print("Comment deleted")
+                            logger.info("Comment deleted")
                     else:
-                        print("Comment is the same as last time, not editing")
-    print(comment_string)
+                        logger.info("Comment is the same as last time, not editing")
+    logger.debug(comment_string)
 
 
 def get_min_levenshtein(
@@ -300,7 +303,7 @@ def is_crosspost(cj_post: Submission, relevant_post: Submission) -> bool:
     duplicates: Iterator[Submission] = cj_post.duplicates()
     for duplicate in duplicates:
         if duplicate.id == relevant_post.id:
-            print("Post is a cross-post, not commenting")
+            logger.info("Post is a cross-post, not commenting")
             return True
     return False
 
@@ -312,8 +315,16 @@ if __name__ == "__main__":
     tame_impala_thread = threading.Thread(
         target=run, args=("tameimpalacirclejerk", "tameimpala",), name="tame_impala"
     )
+    minecraft_thread = threading.Thread(
+        target=run, args=("minecraftcirclejerk", "minecraft", True), name="minecraft"
+    )
+    gaming_thread = threading.Thread(
+        target=run, args=("gamingcirclejerk", "gaming", True), name="gaming"
+    )
     threads.append(chess_thread)
     threads.append(tame_impala_thread)
+    threads.append(minecraft_thread)
+    threads.append(gaming_thread)
     logger.info("Main    : Starting threads")
     for thread in threads:
         thread.start()
