@@ -6,7 +6,9 @@ from praw.models import Subreddit
 from dotenv import load_dotenv
 import numpy as np
 import pickledb
-from typing import cast, Iterator
+from typing import Iterator
+import threading
+
 
 # I've saved my API token information to a .env file, which gets loaded here
 load_dotenv()
@@ -46,7 +48,11 @@ GITHUB_TAG = (
 )
 
 
-def run(circlejerk_sub_name: str = "anarchychess", original_sub_name: str = "chess"):
+def run(
+    circlejerk_sub_name: str = "anarchychess",
+    original_sub_name: str = "chess",
+    quiet_mode: bool = False,
+):
     """
     The main loop of the program, called by the docker entrypoint
     """
@@ -87,7 +93,7 @@ def run(circlejerk_sub_name: str = "anarchychess", original_sub_name: str = "che
             print("RP title: ", relevant_post.title)
             print("Certainty: ", certainty)
 
-            if certainty > CERTAINTY_THRESHOLD:
+            if certainty > CERTAINTY_THRESHOLD and not quiet_mode:
                 try:
                     authors = []
                     if cj_post.comments:
