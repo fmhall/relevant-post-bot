@@ -47,7 +47,7 @@ GITHUB_TAG = (
         "https://github.com/fmhall/relevant-post-bot"
     )
 )
-log_format = "%(asctime)s: %(message)s"
+log_format = "%(asctime)s: %(threadName)s: %(message)s"
 logging.basicConfig(format=log_format, level=logging.INFO, datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,9 @@ def add_circlejerk_comment(
     :return: None
     """
     reply_template = "Relevant r/{} post: [{}](https://www.reddit.com{})\n\n".format(
-        relevant_post.subreddit.name, relevant_post.title, relevant_post.permalink
+        relevant_post.subreddit.display_name,
+        relevant_post.title,
+        relevant_post.permalink,
     )
     certainty_tag = "Certainty: {}%\n\n".format(round(certainty * 100, 2))
     comment = reply_template + certainty_tag + BOT_TAG + GITHUB_TAG
@@ -190,7 +192,9 @@ def add_original_sub_comment(relevant_post: Submission, cj_post: Submission) -> 
     posts_string = "".join(post_tags)
     reply_template = (
         "This post has been parodied on r/{0}.\n\n"
-        "Relevant r/{0} posts: \n\n{1}".format(cj_post.subreddit.name, posts_string)
+        "Relevant r/{0} posts: \n\n{1}".format(
+            cj_post.subreddit.display_name, posts_string
+        )
     )
 
     comment_string = reply_template + BOT_TAG + GITHUB_TAG
@@ -304,8 +308,12 @@ def is_crosspost(cj_post: Submission, relevant_post: Submission) -> bool:
 if __name__ == "__main__":
     logger.info("Main    : Creating threads")
     threads = []
-    chess_thread = threading.Thread(target=run, args=())
+    chess_thread = threading.Thread(target=run, args=(), name="chess")
+    tame_impala_thread = threading.Thread(
+        target=run, args=("tameimpalacirclejerk", "tameimpala",), name="tame_impala"
+    )
     threads.append(chess_thread)
+    threads.append(tame_impala_thread)
     logger.info("Main    : Starting threads")
     for thread in threads:
         thread.start()
