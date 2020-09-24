@@ -75,17 +75,17 @@ def run(
     quiet_mode: bool = False,
 ):
     """
-    The main loop of the program, called by the docker entrypoint
+    The main loop of the program, called by the thread handler
     """
     # Instantiate the subreddit instances
     original_sub: Subreddit = reddit.subreddit(original_sub_name)
     circlejerk_sub: Subreddit = reddit.subreddit(circlejerk_sub_name)
 
-    # This loops forever, streaming submissions in real time from r/anarchychess as they get posted
+    # This loops forever, streaming submissions in real time from the circlejerk sub as they get posted
     for cj_post in circlejerk_sub.stream.submissions():
         print("Analyzing post: ", cj_post.title)
 
-        # Gets the r/chess post in hot with the minimum levenshtein distance
+        # Gets the original sub post in hot with the minimum levenshtein distance
         relevant_post, min_distance = get_min_levenshtein(cj_post, original_sub)
 
         # Are the post's words similar and to what degree?
