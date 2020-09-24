@@ -6,8 +6,9 @@ from praw.models import Subreddit
 from dotenv import load_dotenv
 import numpy as np
 import pickledb
-from typing import Iterator
+from typing import Iterator, Callable
 import threading
+import logging
 
 
 # I've saved my API token information to a .env file, which gets loaded here
@@ -46,8 +47,28 @@ GITHUB_TAG = (
         "https://github.com/fmhall/relevant-post-bot"
     )
 )
+log_format = "%(asctime)s: %(message)s"
+logging.basicConfig(format=log_format, level=logging.INFO, datefmt="%H:%M:%S")
+logger = logging.getLogger(__name__)
 
 
+def restart(handler: Callable):
+    """
+    Decorator that restarts threads if they fail
+    """
+
+    def wrapped_handler(*args, **kwargs):
+        logger.info("Starting thread with: %s", args)
+        while True:
+            try:
+                handler(*args, **kwargs)
+            except Exception as e:
+                logger.error("Exception: %s", e)
+
+    return wrapped_handler
+
+
+@restart
 def run(
     circlejerk_sub_name: str = "anarchychess",
     original_sub_name: str = "chess",
@@ -281,4 +302,10 @@ def is_crosspost(cj_post: Submission, relevant_post: Submission) -> bool:
 
 
 if __name__ == "__main__":
-    run()
+    logger.info("Main    : Creating threads")
+    threads = []
+    chess_thread = threading.Thread(target=run, args=())
+    threads.append(chess_thread)
+    logger.info("Main    : Starting threads")
+    for thread in threads:
+        thread.start()
