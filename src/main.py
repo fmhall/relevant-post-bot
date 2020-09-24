@@ -6,7 +6,9 @@ from praw.models import Subreddit
 from dotenv import load_dotenv
 import numpy as np
 import pickledb
-from typing import cast, Iterator
+from typing import Iterator, Callable
+import threading
+import logging
 
 
 # I've saved my API token information to a .env file, which gets loaded here
@@ -45,168 +47,221 @@ GITHUB_TAG = (
         "https://github.com/fmhall/relevant-post-bot"
     )
 )
+log_format = "%(asctime)s: %(threadName)s: %(message)s"
+logging.basicConfig(format=log_format, level=logging.INFO, datefmt="%H:%M:%S")
+logger = logging.getLogger(__name__)
 
 
-def run():
+def restart(handler: Callable):
     """
-    The main loop of the program, called by the docker entrypoint
+    Decorator that restarts threads if they fail
+    """
+
+    def wrapped_handler(*args, **kwargs):
+        logger.info("Starting thread with: %s", args)
+        while True:
+            try:
+                handler(*args, **kwargs)
+            except Exception as e:
+                logger.error("Exception: %s", e)
+
+    return wrapped_handler
+
+
+@restart
+def run(
+    circlejerk_sub_name: str = "anarchychess",
+    original_sub_name: str = "chess",
+    quiet_mode: bool = False,
+):
+    """
+    The main loop of the program, called by the thread handler
     """
     # Instantiate the subreddit instances
-    chess: Subreddit = reddit.subreddit("chess")
-    anarchychess: Subreddit = reddit.subreddit("anarchychess")
+    original_sub: Subreddit = reddit.subreddit(original_sub_name)
+    circlejerk_sub: Subreddit = reddit.subreddit(circlejerk_sub_name)
+    parody_count = 0
+    # This loops forever, streaming submissions in real time from the circlejerk sub as they get posted
+    for cj_post in circlejerk_sub.stream.submissions():
+        logger.info(f"Analyzing post: {cj_post.title}")
 
-    # This loops forever, streaming submissions in real time from r/anarchychess as they get posted
-    for ac_post in anarchychess.stream.submissions():
-        print("Analyzing post: ", ac_post.title)
-
-        # Gets the r/chess post in hot with the minimum levenshtein distance
-        relevant_post, min_distance = get_min_levenshtein(ac_post, chess)
+        # Gets the original sub post in hot with the minimum levenshtein distance
+        relevant_post, min_distance = get_min_levenshtein(cj_post, original_sub)
 
         # Are the post's words similar and to what degree?
-        sim_bool, similarity = is_similar(ac_post, relevant_post, SIMILARITY_THRESHOLD)
+        sim_bool, similarity = is_similar(cj_post, relevant_post, SIMILARITY_THRESHOLD)
 
         if relevant_post and sim_bool:
             max_length = float(
-                max(len(ac_post.title.split()), len(relevant_post.title.split()))
+                max(len(cj_post.title.split()), len(relevant_post.title.split()))
             )
 
             # Certainty is calculated with this arbitrary formula that seems to work well
             certainty = similarity * (1 - (min_distance / max_length))
 
             # Continue to next post if crosspost
-            if is_crosspost(ac_post, relevant_post):
+            if (
+                is_crosspost(cj_post, relevant_post)
+                or cj_post.author == relevant_post.author
+            ):
                 continue
 
             # Log useful stats
-            print("Minimum distance:", min_distance)
-            print("Maximum length:", max_length)
-            print("Similarity:", similarity)
-            print("AC title: ", ac_post.title)
-            print("C title: ", relevant_post.title)
-            print("Certainty: ", certainty)
-
+            logger.debug(f"Minimum distance: {min_distance}",)
+            logger.debug(f"Maximum length: {max_length}",)
+            logger.debug(f"Similarity: {similarity}",)
+            logger.debug(f"CJ title: {cj_post.title}")
+            logger.debug(f"RP title: {relevant_post.title}")
+            logger.debug(f"Certainty: {certainty}")
             if certainty > CERTAINTY_THRESHOLD:
+                parody_count += 1
+                logger.info(f"Parody count: {parody_count}")
+            if certainty > CERTAINTY_THRESHOLD and not quiet_mode:
                 try:
-                    if ac_post.comments and USERNAME in [
-                        comment.author.name for comment in ac_post.comments
-                    ]:
-                        print("Already commented")
+                    authors = []
+                    if cj_post.comments:
+                        for comment in cj_post.comments:
+                            if comment.author:
+                                authors.append(comment.author.name)
+                    if USERNAME in authors:
+                        logger.info("Already commented on CJ post")
                     else:
-                        add_comment(ac_post, relevant_post, certainty)
+                        add_circlejerk_comment(cj_post, relevant_post, certainty)
 
                 except Exception as error:
-                    print("Was rate limited", error)
+                    logger.error(f"Was rate limited: {error}")
                     pass
 
-                # update the original r/chess post's comment with the relevant AC posts
+                # update the original subs post's comment with the relevant CJ posts
                 try:
-                    add_chess_comment(relevant_post, ac_post)
+                    add_original_sub_comment(relevant_post, cj_post)
 
                 except Exception as error:
-                    print("Was rate limited", error)
+                    logger.error(f"Was rate limited: {error}")
 
 
-def add_comment(ac_post: Submission, relevant_post: Submission, certainty) -> None:
+def add_circlejerk_comment(
+    cj_post: Submission, relevant_post: Submission, certainty
+) -> None:
     """
-    Adds a comment to the AnarchyChess post. If anyone knows how to format it so my username is also superscripted,
+    Adds a comment to the circlejerk_sub post. If anyone knows how to format it so my username is also superscripted,
     please submit a PR.
 
-    :param ac_post: AnarchyChess post
-    :param relevant_post: Chess post
+    :param cj_post: circlejerk_sub post
+    :param relevant_post: original_sub post
     :param certainty: Certainty metric
     :return: None
     """
-    reply_template = "Relevant r/chess post: [{}](https://www.reddit.com{})\n\n".format(
-        relevant_post.title, relevant_post.permalink
+    reply_template = "Relevant r/{} post: [{}](https://www.reddit.com{})\n\n".format(
+        relevant_post.subreddit.display_name,
+        relevant_post.title,
+        relevant_post.permalink,
     )
     certainty_tag = "Certainty: {}%\n\n".format(round(certainty * 100, 2))
     comment = reply_template + certainty_tag + BOT_TAG + GITHUB_TAG
-    ac_post.reply(comment)
-    print(comment)
+    cj_post.reply(comment)
+    logger.debug(comment)
+    logger.info(f"Added comment to {relevant_post.subreddit.display_name}")
 
 
-def add_chess_comment(relevant_post: Submission, ac_post: Submission) -> None:
+def add_original_sub_comment(relevant_post: Submission, cj_post: Submission) -> None:
     """
-    Adds a comment to the Chess post. If anyone knows how to format it so my username is also superscripted,
-    please submit a PR.
+    Adds a comment to the original_sub post.
 
-    :param relevant_post: Chess post
-    :param ac_post: AnarchyChess post
+    :param relevant_post: original_sub post
+    :param cj_post: circlejerk_sub post
     :return: None
     """
     rpid = str(relevant_post.id)
-    acpid = str(ac_post.id)
+    cjpid = str(cj_post.id)
     if not db.get(rpid):
-        db.set(rpid, [acpid])
+        db.set(rpid, [cjpid])
     else:
         rid_list = db.get(rpid)
         rid_list = list(set(rid_list))
-        if acpid not in rid_list:
-            rid_list.append(acpid)
+        if cjpid not in rid_list:
+            rid_list.append(cjpid)
         db.set(rpid, rid_list)
     posts = [reddit.submission(id=p) for p in db.get(rpid)]
     posts.sort(key=lambda x: x.score, reverse=True)
-    posts_string = "".join(
-        [
-            "[{}](https://www.reddit.com{}) by {}\n\n".format(
-                p.title, p.permalink, p.author
+    post_tags = []
+    for post in posts:
+        if post and post.author:
+            post_tags.append(
+                "[{}](https://www.reddit.com{}) by {}\n\n".format(
+                    post.title, post.permalink, post.author
+                )
             )
-            for p in posts
-        ]
-    )
+    posts_string = "".join(post_tags)
     reply_template = (
-        "This post has been parodied on r/anarchychess.\n\n"
-        "Relevant r/anarchychess posts: \n\n{}".format(posts_string)
+        "This post has been parodied on r/{0}.\n\n"
+        "Relevant r/{0} posts: \n\n{1}".format(
+            cj_post.subreddit.display_name, posts_string
+        )
     )
 
     comment_string = reply_template + BOT_TAG + GITHUB_TAG
-    if relevant_post.comments and USERNAME not in [
-        comment.author.name for comment in relevant_post.comments
-    ]:
+    authors = []
+    if relevant_post.comments:
+        for comment in relevant_post.comments:
+            if comment.author:
+                authors.append(comment.author.name)
+    if USERNAME not in authors and len(post_tags) > 0:
         relevant_post.reply(comment_string)
     else:
         for comment in relevant_post.comments:
-            if comment.author.name == USERNAME:
-                comment.edit(comment_string)
-                print("edited")
-    print(comment_string)
+            if comment.author:
+                if comment.author.name == USERNAME:
+                    logger.debug(comment.body)
+                    if comment_string != comment.body:
+                        if len(post_tags) > 0:
+                            comment.edit(comment_string)
+                            logger.info("edited")
+                        else:
+                            comment.delete()
+                            logger.info("Comment deleted")
+                    else:
+                        logger.info("Comment is the same as last time, not editing")
+    logger.debug(comment_string)
 
 
-def get_min_levenshtein(ac_post: Submission, chess: Subreddit) -> (Submission, float):
+def get_min_levenshtein(
+    cj_post: Submission, original_sub: Subreddit
+) -> (Submission, float):
     """
-    This function iterates through the hot posts in the Chess subreddit and finds the one with the smallest levenshtein
-    distance to the AnarchyChess post.
-    :param ac_post: AnarchyChess post
-    :param chess: Chess subreddit
-    :return: tuple with the r/chess post with the smallest LD, and the distance
+    This function iterates through the hot posts in the original_sub subreddit and finds the one with the smallest levenshtein
+    distance to the circlejerk_sub post.
+    :param cj_post: circlejerk_sub post
+    :param original_sub: original_sub subreddit
+    :return: tuple with the original sub's post with the smallest LD, and the distance
     """
-    ac_title: str = ac_post.title.lower()
+    cj_title: str = cj_post.title.lower()
     min_distance = 100000
     relevant_post = None
-    for c_post in chess.hot():
-        c_title = c_post.title.lower()
-        distance = levenshtein(ac_title.split(), c_title.split())
+    for os_post in original_sub.hot():
+        os_title = os_post.title.lower()
+        distance = levenshtein(cj_title.split(), os_title.split())
         if distance < min_distance:
             min_distance = distance
-            relevant_post = c_post
+            relevant_post = os_post
     return relevant_post, min_distance
 
 
 def is_similar(
-    ac_post: Submission, c_post: Submission, factor: float
+    cj_post: Submission, os_post: Submission, factor: float
 ) -> Tuple[bool, float]:
     """
 
-    :param ac_post: AnarchyChess post
-    :param c_post: Chess post
+    :param cj_post: circlejerk_sub post
+    :param os_post: original_sub post
     :param factor: float indicating smallest proportion of similar words
     :return: boolean indicating if the proportion is similar and the proportion of words the posts
     share divided by the length of the longer post
     """
-    ac_title_set = set(ac_post.title.lower().split())
-    c_title_set = set(c_post.title.lower().split())
-    similarity = len(ac_title_set.intersection(c_title_set))
-    sim_ratio = similarity / max(len(ac_title_set), len(c_title_set))
+    cj_title_set = set(cj_post.title.lower().split())
+    os_title_set = set(os_post.title.lower().split())
+    similarity = len(cj_title_set.intersection(os_title_set))
+    sim_ratio = similarity / max(len(cj_title_set), len(os_title_set))
 
     if sim_ratio > factor:
         return True, sim_ratio
@@ -244,14 +299,32 @@ def levenshtein(seq1: list, seq2: list) -> float:
     return float(matrix[size_x - 1, size_y - 1])
 
 
-def is_crosspost(ac_post: Submission, relevant_post: Submission) -> bool:
-    duplicates: Iterator[Submission] = ac_post.duplicates()
+def is_crosspost(cj_post: Submission, relevant_post: Submission) -> bool:
+    duplicates: Iterator[Submission] = cj_post.duplicates()
     for duplicate in duplicates:
         if duplicate.id == relevant_post.id:
-            print("Post is a cross-post, not commenting")
+            logger.info("Post is a cross-post, not commenting")
             return True
     return False
 
 
 if __name__ == "__main__":
-    run()
+    logger.info("Main    : Creating threads")
+    threads = []
+    chess_thread = threading.Thread(target=run, args=(), name="chess")
+    tame_impala_thread = threading.Thread(
+        target=run, args=("tameimpalacirclejerk", "tameimpala",), name="tame_impala"
+    )
+    minecraft_thread = threading.Thread(
+        target=run, args=("minecraftcirclejerk", "minecraft", True), name="minecraft"
+    )
+    gaming_thread = threading.Thread(
+        target=run, args=("gamingcirclejerk", "gaming", True), name="gaming"
+    )
+    threads.append(chess_thread)
+    threads.append(tame_impala_thread)
+    threads.append(minecraft_thread)
+    threads.append(gaming_thread)
+    logger.info("Main    : Starting threads")
+    for thread in threads:
+        thread.start()
