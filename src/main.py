@@ -10,7 +10,6 @@ from typing import Iterator, Callable
 import threading
 import logging
 
-
 # I've saved my API token information to a .env file, which gets loaded here
 load_dotenv()
 CLIENT = os.getenv("CLIENT_ID")
@@ -187,9 +186,12 @@ def add_original_sub_comment(relevant_post: Submission, cj_post: Submission) -> 
     post_tags = []
     for post in posts:
         if post and post.author:
+            nsfw_tag = ""
+            if post.over_18:
+                nsfw_tag = "[NSFW] "
             post_tags.append(
-                "[{}](https://www.reddit.com{}) by {}\n\n".format(
-                    post.title, post.permalink, post.author
+                "[{}{}](https://www.reddit.com{}) by {}\n\n".format(
+                    nsfw_tag, post.title, post.permalink, post.author
                 )
             )
     posts_string = "".join(post_tags)
