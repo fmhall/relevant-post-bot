@@ -317,16 +317,16 @@ if __name__ == "__main__":
     tame_impala_thread = threading.Thread(
         target=run, args=("tameimpalacirclejerk", "tameimpala",), name="tame_impala"
     )
-    minecraft_thread = threading.Thread(
-        target=run, args=("minecraftcirclejerk", "minecraft", True), name="minecraft"
-    )
     gaming_thread = threading.Thread(
-        target=run, args=("gamingcirclejerk", "gaming", True), name="gaming"
+        target=run, args=("gamingcirclejerk", "gaming"), name="gaming"
+    )
+    writing_thread = threading.Thread(
+        target=run, args=("writingcirclejerk", "writing"), name="writing"
     )
     threads.append(chess_thread)
     threads.append(tame_impala_thread)
-    threads.append(minecraft_thread)
     threads.append(gaming_thread)
+    threads.append(writing_thread)
     logger.info("Main    : Starting threads")
     for thread in threads:
         thread.start()
