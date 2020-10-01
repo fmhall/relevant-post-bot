@@ -321,13 +321,9 @@ if __name__ == "__main__":
     gaming_thread = threading.Thread(
         target=run, args=("gamingcirclejerk", "gaming"), name="gaming"
     )
-    writing_thread = threading.Thread(
-        target=run, args=("writingcirclejerk", "writing"), name="writing"
-    )
     threads.append(chess_thread)
     threads.append(tame_impala_thread)
     threads.append(gaming_thread)
-    threads.append(writing_thread)
     logger.info("Main    : Starting threads")
     for thread in threads:
         thread.start()
