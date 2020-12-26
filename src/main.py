@@ -41,8 +41,7 @@ BOT_TAG = (
 )
 
 GITHUB_TAG = (
-    "^I ^use ^the ^Levenshtein ^distance ^of ^both ^titles ^to ^determine ^relevance."
-    "\n^You ^can ^find ^my ^source ^code [^(here)]({})".format(
+    "[^(fmhall)](https://www.reddit.com/user/fmhall) ^| [^(github)]({})\n".format(
         "https://github.com/fmhall/relevant-post-bot"
     )
 )
@@ -72,6 +71,7 @@ def run(
     circlejerk_sub_name: str = "anarchychess",
     original_sub_name: str = "chess",
     quiet_mode: bool = False,
+    add_os_comment: bool = True
 ):
     """
     The main loop of the program, called by the thread handler
@@ -130,13 +130,13 @@ def run(
                 except Exception as error:
                     logger.error(f"Was rate limited: {error}")
                     pass
+                if add_os_comment:
+                    # update the original subs post's comment with the relevant CJ posts
+                    try:
+                        add_original_sub_comment(relevant_post, cj_post)
 
-                # update the original subs post's comment with the relevant CJ posts
-                try:
-                    add_original_sub_comment(relevant_post, cj_post)
-
-                except Exception as error:
-                    logger.error(f"Was rate limited: {error}")
+                    except Exception as error:
+                        logger.error(f"Was rate limited: {error}")
 
 
 def add_circlejerk_comment(
@@ -324,7 +324,7 @@ if __name__ == "__main__":
         target=run, args=("shittyaskflying", "flying"), name="flying"
     )
     aviation_thread = threading.Thread(
-        target=run, args=("shittyaskflying", "aviation"), name="aviation"
+        target=run, args=("shittyaskflying", "aviation", False, False), name="aviation"
     )
     fly_fishing_thread = threading.Thread(
         target=run, args=("flyfishingcirclejerk", "flyfishing"), name="fly_fishing"
