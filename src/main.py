@@ -33,13 +33,6 @@ reddit = Reddit(
 CERTAINTY_THRESHOLD = 0.50
 SIMILARITY_THRESHOLD = 0.40
 
-BOT_TAG = (
-    "^I ^am ^a ^bot ^created ^by [^(fmhall,)](https://www.reddit.com/user/fmhall) ^inspired ^by [^(this "
-    "comment.)]({})\n".format(
-        "https://www.reddit.com/r/AnarchyChess/comments/durvcj/dude_doesnt_play_chess_thinks_he_can_beat_magnus/f78cga9"
-    )
-)
-
 GITHUB_TAG = (
     "[^(fmhall)](https://www.reddit.com/user/fmhall) ^| [^(github)]({})\n".format(
         "https://github.com/fmhall/relevant-post-bot"
@@ -157,7 +150,7 @@ def add_circlejerk_comment(
         relevant_post.permalink,
     )
     certainty_tag = "Certainty: {}%\n\n".format(round(certainty * 100, 2))
-    comment = reply_template + certainty_tag + BOT_TAG + GITHUB_TAG
+    comment = reply_template + certainty_tag + GITHUB_TAG
     cj_post.reply(comment)
     logger.debug(comment)
     logger.info(f"Added comment to {relevant_post.subreddit.display_name}")
