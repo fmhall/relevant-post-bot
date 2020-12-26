@@ -35,16 +35,8 @@ reddit = Reddit(
 CERTAINTY_THRESHOLD = 0.50
 SIMILARITY_THRESHOLD = 0.40
 
-BOT_TAG = (
-    "^I ^am ^a ^bot ^created ^by [^(fmhall,)](https://www.reddit.com/user/fmhall) ^inspired ^by [^(this "
-    "comment.)]({})\n".format(
-        "https://www.reddit.com/r/AnarchyChess/comments/durvcj/dude_doesnt_play_chess_thinks_he_can_beat_magnus/f78cga9"
-    )
-)
-
 GITHUB_TAG = (
-    "^I ^use ^the ^Levenshtein ^distance ^of ^both ^titles ^to ^determine ^relevance."
-    "\n^You ^can ^find ^my ^source ^code [^(here)]({})".format(
+    "[^(fmhall)](https://www.reddit.com/user/fmhall) ^| [^(github)]({})\n".format(
         "https://github.com/fmhall/relevant-post-bot"
     )
 )
@@ -74,6 +66,7 @@ def run(
     circlejerk_sub_name: str = "anarchychess",
     original_sub_name: str = "chess",
     quiet_mode: bool = False,
+    add_os_comment: bool = True
 ):
     """
     The main loop of the program, called by the thread handler
@@ -127,12 +120,16 @@ def run(
                     else:
                         add_circlejerk_comment(cj_post, relevant_post, certainty)
 
-                    # update the original subs post's comment with the relevant CJ posts
-                    add_original_sub_comment(relevant_post, cj_post, my_comments)
-
                 except Exception as error:
                     logger.error(f"Was rate limited: {error}")
                     pass
+                if add_os_comment:
+                    # update the original subs post's comment with the relevant CJ posts
+                    try:
+                        add_original_sub_comment(relevant_post, cj_post)
+
+                    except Exception as error:
+                        logger.error(f"Was rate limited: {error}")
 
 
 def add_circlejerk_comment(
@@ -153,7 +150,7 @@ def add_circlejerk_comment(
         relevant_post.permalink,
     )
     certainty_tag = "Certainty: {}%\n\n".format(round(certainty * 100, 2))
-    comment = reply_template + certainty_tag + BOT_TAG + GITHUB_TAG
+    comment = reply_template + certainty_tag + GITHUB_TAG
     cj_post.reply(comment)
     logger.debug(comment)
     logger.info(f"Added comment to {cj_post.subreddit.display_name}")
@@ -318,12 +315,26 @@ if __name__ == "__main__":
     tame_impala_thread = threading.Thread(
         target=run, args=("tameimpalacirclejerk", "tameimpala",), name="tame_impala"
     )
-    gaming_thread = threading.Thread(
-        target=run, args=("gamingcirclejerk", "gaming"), name="gaming"
+    vexillology_thread = threading.Thread(
+        target=run, args=("vexillologycirclejerk", "vexillology"), name="vexillology"
     )
+    flying_thread = threading.Thread(
+        target=run, args=("shittyaskflying", "flying"), name="flying"
+    )
+    aviation_thread = threading.Thread(
+        target=run, args=("shittyaskflying", "aviation", False, False), name="aviation"
+    )
+    fly_fishing_thread = threading.Thread(
+        target=run, args=("flyfishingcirclejerk", "flyfishing"), name="fly_fishing"
+    )
+    
     threads.append(chess_thread)
     threads.append(tame_impala_thread)
-    threads.append(gaming_thread)
+    threads.append(vexillology_thread)
+    threads.append(flying_thread)
+    threads.append(aviation_thread)
+    threads.append(fly_fishing_thread)
+    
     logger.info("Main    : Starting threads")
     for thread in threads:
         thread.start()
