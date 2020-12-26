@@ -317,16 +317,24 @@ if __name__ == "__main__":
     tame_impala_thread = threading.Thread(
         target=run, args=("tameimpalacirclejerk", "tameimpala",), name="tame_impala"
     )
-    gaming_thread = threading.Thread(
-        target=run, args=("gamingcirclejerk", "gaming"), name="gaming"
+    vexillology_thread = threading.Thread(
+        target=run, args=("vexillologycirclejerk", "vexillology"), name="vexillology"
     )
-    writing_thread = threading.Thread(
-        target=run, args=("writingcirclejerk", "writing"), name="writing"
+    flying_thread = threading.Thread(
+        target=run, args=("shittyaskflying", "flying"), name="flying"
+    )
+    aviation_thread = threading.Thread(
+        target=run, args=("shittyaskflying", "aviation"), name="aviation"
+    )
+    fly_fishing_thread = threading.Thread(
+        target=run, args=("flyfishingcirclejerk", "flyfishing"), name="fly_fishing"
     )
     threads.append(chess_thread)
     threads.append(tame_impala_thread)
-    threads.append(gaming_thread)
-    threads.append(writing_thread)
+    threads.append(vexillology_thread)
+    threads.append(flying_thread)
+    threads.append(aviation_thread)
+    threads.append(fly_fishing_thread)
     logger.info("Main    : Starting threads")
     for thread in threads:
         thread.start()
