@@ -195,7 +195,7 @@ def add_original_sub_comment(relevant_post: Submission, cj_post: Submission) -> 
         )
     )
 
-    comment_string = reply_template + BOT_TAG + GITHUB_TAG
+    comment_string = reply_template + GITHUB_TAG
     authors = []
     if relevant_post.comments:
         for comment in relevant_post.comments:
