@@ -198,7 +198,7 @@ def add_original_sub_comment(
         )
     )
 
-    comment_string = reply_template + BOT_TAG + GITHUB_TAG
+    comment_string = reply_template + GITHUB_TAG
     for my_comment in my_comments:
         if my_comment.link_id == relevant_post.id:
             modify_exisiting_comment(my_comment, comment_string, post_tags)
