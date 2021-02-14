@@ -9,6 +9,7 @@ import pickledb
 from typing import Iterator, Callable
 import threading
 import logging
+import string
 
 # I've saved my API token information to a .env file, which gets loaded here
 load_dotenv()
@@ -33,10 +34,8 @@ reddit = Reddit(
 CERTAINTY_THRESHOLD = 0.50
 SIMILARITY_THRESHOLD = 0.40
 
-GITHUB_TAG = (
-    "[^(fmhall)](https://www.reddit.com/user/fmhall) ^| [^(github)]({})\n".format(
-        "https://github.com/fmhall/relevant-post-bot"
-    )
+GITHUB_TAG = "[^(fmhall)](https://www.reddit.com/user/fmhall) ^| [^(github)]({})\n".format(
+    "https://github.com/fmhall/relevant-post-bot"
 )
 log_format = "%(asctime)s: %(threadName)s: %(message)s"
 logging.basicConfig(format=log_format, level=logging.INFO, datefmt="%H:%M:%S")
@@ -64,7 +63,7 @@ def run(
     circlejerk_sub_name: str = "anarchychess",
     original_sub_name: str = "chess",
     quiet_mode: bool = False,
-    add_os_comment: bool = True
+    add_os_comment: bool = True,
 ):
     """
     The main loop of the program, called by the thread handler
@@ -230,11 +229,11 @@ def get_min_levenshtein(
     :param original_sub: original_sub subreddit
     :return: tuple with the original sub's post with the smallest LD, and the distance
     """
-    cj_title: str = cj_post.title.lower()
+    cj_title = standardize_title(cj_post.title)
     min_distance = 100000
     relevant_post = None
     for os_post in original_sub.hot():
-        os_title = os_post.title.lower()
+        os_title = standardize_title(os_post.title)
         distance = levenshtein(cj_title.split(), os_title.split())
         if distance < min_distance:
             min_distance = distance
@@ -253,8 +252,10 @@ def is_similar(
     :return: boolean indicating if the proportion is similar and the proportion of words the posts
     share divided by the length of the longer post
     """
-    cj_title_set = set(cj_post.title.lower().split())
-    os_title_set = set(os_post.title.lower().split())
+    cj_title = standardize_title(cj_post.title)
+    os_title = standardize_title(os_post.title)
+    cj_title_set = set(cj_title.split())
+    os_title_set = set(os_title.split())
     similarity = len(cj_title_set.intersection(os_title_set))
     sim_ratio = similarity / max(len(cj_title_set), len(os_title_set))
 
@@ -303,6 +304,11 @@ def is_crosspost(cj_post: Submission, relevant_post: Submission) -> bool:
     return False
 
 
+def standardize_title(title: str) -> str:
+    title = title.lower().translate(str.maketrans("", "", string.punctuation))
+    return title
+
+
 if __name__ == "__main__":
     logger.info("Main    : Creating threads")
     threads = []
@@ -322,12 +328,16 @@ if __name__ == "__main__":
     fly_fishing_thread = threading.Thread(
         target=run, args=("flyfishingcirclejerk", "flyfishing"), name="fly_fishing"
     )
+    cricket_thread = threading.Thread(
+        target=run, args=("CricketShitpost", "Cricket"), name="cricket"
+    )
     threads.append(chess_thread)
     threads.append(tame_impala_thread)
     threads.append(vexillology_thread)
     threads.append(flying_thread)
     threads.append(aviation_thread)
     threads.append(fly_fishing_thread)
+    threads.append(cricket_thread)
     logger.info("Main    : Starting threads")
     for thread in threads:
         thread.start()
