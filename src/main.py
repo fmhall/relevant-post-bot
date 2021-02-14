@@ -35,7 +35,7 @@ reddit = Reddit(
 )
 # Constants
 CERTAINTY_THRESHOLD = 0.50
-SIMILARITY_THRESHOLD = 0.20
+SIMILARITY_THRESHOLD = 0.40
 
 GITHUB_TAG = "[^(fmhall)](https://www.reddit.com/user/fmhall) ^| [^(github)]({})\n".format(
     "https://github.com/fmhall/relevant-post-bot"
