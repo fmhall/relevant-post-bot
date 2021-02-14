@@ -337,7 +337,7 @@ def delete_bad_comments(username: str):
             comment.delete()
         else:
             logger.debug("Not deleting")
-    time.sleep(60*15)
+    time.sleep(60 * 15)
 
 
 if __name__ == "__main__":
