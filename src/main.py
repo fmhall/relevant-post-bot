@@ -12,6 +12,7 @@ from typing import Iterator, Callable
 import threading
 import logging
 import string
+import time
 
 # I've saved my API token information to a .env file, which gets loaded here
 load_dotenv()
@@ -320,6 +321,25 @@ def standardize_title(title: str) -> str:
     return title
 
 
+@restart
+def delete_bad_comments(username: str):
+    """
+    Delete bad comments, called by the thread handler
+    """
+    # Instantiate the subreddit instances
+    comments = reddit.redditor(username).comments.new(limit=100)
+
+    for comment in comments:
+        logger.debug(f"Analyzing {comment.body}")
+        should_delete = comment.score < 0
+        if should_delete:
+            logger.info(f"Deleting comment {str(comment.body)}")
+            comment.delete()
+        else:
+            logger.debug("Not deleting")
+    time.sleep(60*15)
+
+
 if __name__ == "__main__":
     logger.info("Main    : Creating threads")
     threads = []
@@ -344,6 +364,9 @@ if __name__ == "__main__":
     cricket_thread = threading.Thread(
         target=run, args=("CricketShitpost", "Cricket"), name="cricket"
     )
+    cleanup_thread = threading.Thread(
+        target=delete_bad_comments, args=USERNAME, name="cleanup"
+    )
 
     threads.append(chess_thread)
     threads.append(tame_impala_thread)
@@ -352,6 +375,7 @@ if __name__ == "__main__":
     threads.append(aviation_thread)
     threads.append(fly_fishing_thread)
     threads.append(cricket_thread)
+    threads.append(cleanup_thread)
 
     logger.info("Main    : Starting threads")
     for thread in threads:
