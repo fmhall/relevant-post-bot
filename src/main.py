@@ -12,6 +12,7 @@ from typing import Iterator, Callable
 import threading
 import logging
 import string
+import time
 
 # I've saved my API token information to a .env file, which gets loaded here
 load_dotenv()
@@ -66,6 +67,8 @@ def run(
     original_sub_name: str = "chess",
     quiet_mode: bool = False,
     add_os_comment: bool = True,
+    certainty_threshold: float = CERTAINTY_THRESHOLD,
+    similarity_threshold: float = SIMILARITY_THRESHOLD,
 ):
     """
     The main loop of the program, called by the thread handler
@@ -82,7 +85,7 @@ def run(
         relevant_post, min_distance = get_min_levenshtein(cj_post, original_sub)
 
         # Are the post's words similar and to what degree?
-        sim_bool, similarity = is_similar(cj_post, relevant_post, SIMILARITY_THRESHOLD)
+        sim_bool, similarity = is_similar(cj_post, relevant_post, similarity_threshold)
 
         if relevant_post and sim_bool:
             max_length = float(
@@ -90,8 +93,8 @@ def run(
             )
 
             # Certainty is calculated with this arbitrary formula that seems to work well
-            certainty = similarity * (1 - (min_distance / max_length))
-
+            certainty = 1 - (min_distance / max_length)
+            old_certainty = similarity * 1 - (min_distance / max_length)
             # Continue to next post if crosspost
             if (
                 is_crosspost(cj_post, relevant_post)
@@ -100,13 +103,17 @@ def run(
                 continue
 
             # Log useful stats
-            logger.debug(f"Minimum distance: {min_distance}",)
-            logger.debug(f"Maximum length: {max_length}",)
-            logger.debug(f"Similarity: {similarity}",)
-            logger.debug(f"CJ title: {cj_post.title}")
-            logger.debug(f"RP title: {relevant_post.title}")
-            logger.debug(f"Certainty: {certainty}")
-            if certainty > CERTAINTY_THRESHOLD:
+            logger.info(f"Minimum distance: {min_distance}",)
+            logger.info(f"Maximum length: {max_length}",)
+            logger.info(f"Similarity: {similarity}",)
+            logger.info(f"CJ title: {cj_post.title}")
+            logger.info(f"RP title: {relevant_post.title}")
+            logger.info(f"Certainty: {certainty}")
+            logger.info(f"Old Certainty: {old_certainty}")
+
+            if max_length <= 3:
+                certainty = old_certainty
+            if certainty > certainty_threshold:
                 parody_count += 1
                 logger.info(f"Parody count: {parody_count}")
             if certainty > CERTAINTY_THRESHOLD and not quiet_mode:
@@ -314,6 +321,25 @@ def standardize_title(title: str) -> str:
     return title
 
 
+@restart
+def delete_bad_comments(username: str):
+    """
+    Delete bad comments, called by the thread handler
+    """
+    # Instantiate the subreddit instances
+    comments = reddit.redditor(username).comments.new(limit=100)
+
+    for comment in comments:
+        logger.debug(f"Analyzing {comment.body}")
+        should_delete = comment.score < 0
+        if should_delete:
+            logger.info(f"Deleting comment {str(comment.body)}")
+            comment.delete()
+        else:
+            logger.debug("Not deleting")
+    time.sleep(60 * 15)
+
+
 if __name__ == "__main__":
     logger.info("Main    : Creating threads")
     threads = []
@@ -322,7 +348,9 @@ if __name__ == "__main__":
         target=run, args=("tameimpalacirclejerk", "tameimpala",), name="tame_impala"
     )
     vexillology_thread = threading.Thread(
-        target=run, args=("vexillologycirclejerk", "vexillology"), name="vexillology"
+        target=run,
+        args=("vexillologycirclejerk", "vexillology", False, True, 0.8),
+        name="vexillology",
     )
     flying_thread = threading.Thread(
         target=run, args=("shittyaskflying", "flying"), name="flying"
@@ -336,6 +364,9 @@ if __name__ == "__main__":
     cricket_thread = threading.Thread(
         target=run, args=("CricketShitpost", "Cricket"), name="cricket"
     )
+    cleanup_thread = threading.Thread(
+        target=delete_bad_comments, args=[USERNAME], name="cleanup"
+    )
 
     threads.append(chess_thread)
     threads.append(tame_impala_thread)
@@ -344,6 +375,7 @@ if __name__ == "__main__":
     threads.append(aviation_thread)
     threads.append(fly_fishing_thread)
     threads.append(cricket_thread)
+    threads.append(cleanup_thread)
 
     logger.info("Main    : Starting threads")
     for thread in threads:
