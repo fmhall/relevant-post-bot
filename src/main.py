@@ -1,8 +1,10 @@
 import os
-from typing import Tuple
+from typing import Tuple, Union, List
 from praw import Reddit
 from praw.models import Submission
 from praw.models import Subreddit
+from praw.models import Comment
+from praw.models import ListingGenerator
 from dotenv import load_dotenv
 import numpy as np
 import pickledb
@@ -109,12 +111,10 @@ def run(
                 logger.info(f"Parody count: {parody_count}")
             if certainty > CERTAINTY_THRESHOLD and not quiet_mode:
                 try:
-                    authors = []
-                    if cj_post.comments:
-                        for comment in cj_post.comments:
-                            if comment.author:
-                                authors.append(comment.author.name)
-                    if USERNAME in authors:
+                    my_comments = reddit.redditor(USERNAME).comments.new()
+                    if any(
+                        my_comment.link_id == cj_post.id for my_comment in my_comments
+                    ):
                         logger.info("Already commented on CJ post")
                     else:
                         add_circlejerk_comment(cj_post, relevant_post, certainty)
@@ -152,15 +152,18 @@ def add_circlejerk_comment(
     comment = reply_template + certainty_tag + GITHUB_TAG
     cj_post.reply(comment)
     logger.debug(comment)
-    logger.info(f"Added comment to {relevant_post.subreddit.display_name}")
+    logger.info(f"Added comment to {cj_post.subreddit.display_name}")
 
 
-def add_original_sub_comment(relevant_post: Submission, cj_post: Submission) -> None:
+def add_original_sub_comment(
+    relevant_post: Submission, cj_post: Submission, my_comments: ListingGenerator
+) -> None:
     """
     Adds a comment to the original_sub post.
 
     :param relevant_post: original_sub post
     :param cj_post: circlejerk_sub post
+    :param my_comments: Iterator of RP bots recent comments
     :return: None
     """
     rpid = str(relevant_post.id)
@@ -202,21 +205,23 @@ def add_original_sub_comment(relevant_post: Submission, cj_post: Submission) -> 
                 authors.append(comment.author.name)
     if USERNAME not in authors and len(post_tags) > 0:
         relevant_post.reply(comment_string)
+        logger.debug(comment_string)
+        logger.info(f"Added comment to {relevant_post.subreddit.display_name}")
+
+
+def modify_exisiting_comment(
+    comment: Comment, comment_string: str, post_tags: List[str]
+) -> None:
+    logger.debug(comment.body)
+    if comment_string != comment.body:
+        if len(post_tags) > 0:
+            comment.edit(comment_string)
+            logger.info(f"edited {comment_string}")
+        else:
+            comment.delete()
+            logger.info(f"Comment deleted: {comment_string}")
     else:
-        for comment in relevant_post.comments:
-            if comment.author:
-                if comment.author.name == USERNAME:
-                    logger.debug(comment.body)
-                    if comment_string != comment.body:
-                        if len(post_tags) > 0:
-                            comment.edit(comment_string)
-                            logger.info("edited")
-                        else:
-                            comment.delete()
-                            logger.info("Comment deleted")
-                    else:
-                        logger.info("Comment is the same as last time, not editing")
-    logger.debug(comment_string)
+        logger.info("Comment is the same as last time, not editing")
 
 
 def get_min_levenshtein(
@@ -331,6 +336,7 @@ if __name__ == "__main__":
     cricket_thread = threading.Thread(
         target=run, args=("CricketShitpost", "Cricket"), name="cricket"
     )
+
     threads.append(chess_thread)
     threads.append(tame_impala_thread)
     threads.append(vexillology_thread)
@@ -338,6 +344,7 @@ if __name__ == "__main__":
     threads.append(aviation_thread)
     threads.append(fly_fishing_thread)
     threads.append(cricket_thread)
+
     logger.info("Main    : Starting threads")
     for thread in threads:
         thread.start()
