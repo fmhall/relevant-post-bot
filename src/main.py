@@ -365,7 +365,7 @@ if __name__ == "__main__":
         target=run, args=("CricketShitpost", "Cricket"), name="cricket"
     )
     cleanup_thread = threading.Thread(
-        target=delete_bad_comments, args=USERNAME, name="cleanup"
+        target=delete_bad_comments, args=[USERNAME], name="cleanup"
     )
 
     threads.append(chess_thread)
