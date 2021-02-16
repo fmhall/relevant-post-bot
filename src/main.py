@@ -118,10 +118,12 @@ def run(
                 logger.info(f"Parody count: {parody_count}")
             if certainty > CERTAINTY_THRESHOLD and not quiet_mode:
                 try:
-                    my_comments = reddit.redditor(USERNAME).comments.new()
-                    if any(
-                        my_comment.link_id == cj_post.id for my_comment in my_comments
-                    ):
+                    authors = []
+                    if cj_post.comments:
+                        for comment in cj_post.comments:
+                            if comment.author:
+                                authors.append(comment.author.name)
+                    if USERNAME in authors:
                         logger.info("Already commented on CJ post")
                     else:
                         add_circlejerk_comment(cj_post, relevant_post, certainty)
@@ -139,8 +141,7 @@ def run(
 
 
 def add_circlejerk_comment(
-    cj_post: Submission, relevant_post: Submission, certainty
-) -> None:
+    cj_post: Submission, relevant_post: Submission, certainty: float) -> None:
     """
     Adds a comment to the circlejerk_sub post. If anyone knows how to format it so my username is also superscripted,
     please submit a PR.
@@ -150,7 +151,11 @@ def add_circlejerk_comment(
     :param certainty: Certainty metric
     :return: None
     """
-    reply_template = "Relevant r/{} post: [{}](https://www.reddit.com{})\n\n".format(
+    nsfw_tag = ""
+    if relevant_post.over_18:
+        nsfw_tag = "[NSFW] "
+    reply_template = "Relevant r/{} post: [{}{}](https://www.reddit.com{})\n\n".format(
+        nsfw_tag,
         relevant_post.subreddit.display_name,
         relevant_post.title,
         relevant_post.permalink,
@@ -162,15 +167,12 @@ def add_circlejerk_comment(
     logger.info(f"Added comment to {cj_post.subreddit.display_name}")
 
 
-def add_original_sub_comment(
-    relevant_post: Submission, cj_post: Submission, my_comments: ListingGenerator
-) -> None:
+def add_original_sub_comment(relevant_post: Submission, cj_post: Submission) -> None:
     """
     Adds a comment to the original_sub post.
 
     :param relevant_post: original_sub post
     :param cj_post: circlejerk_sub post
-    :param my_comments: Iterator of RP bots recent comments
     :return: None
     """
     rpid = str(relevant_post.id)
@@ -214,6 +216,20 @@ def add_original_sub_comment(
         relevant_post.reply(comment_string)
         logger.debug(comment_string)
         logger.info(f"Added comment to {relevant_post.subreddit.display_name}")
+    else:
+        for comment in relevant_post.comments:
+            if comment.author:
+                if comment.author.name == USERNAME:
+                    logger.debug(comment.body)
+                    if comment_string != comment.body:
+                        if len(post_tags) > 0:
+                            comment.edit(comment_string)
+                            logger.info("edited")
+                        else:
+                            comment.delete()
+                            logger.info("Comment deleted")
+                    else:
+                        logger.info("Comment is the same as last time, not editing")
 
 
 def modify_exisiting_comment(
