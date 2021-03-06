@@ -380,6 +380,9 @@ if __name__ == "__main__":
     cricket_thread = threading.Thread(
         target=run, args=("CricketShitpost", "Cricket"), name="cricket"
     )
+    movie_details_thread = threading.Thread(
+        target = run, args=("shittymoviedetails", "MovieDetails"), name="movie_details"
+    )
     cleanup_thread = threading.Thread(
         target=delete_bad_comments, args=[USERNAME], name="cleanup"
     )
