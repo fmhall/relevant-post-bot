@@ -27,7 +27,7 @@ db = pickledb.load(pickle_path, True)
 
 # Create the reddit object instance using Praw
 reddit = Reddit(
-    user_agent="RelevantChessPostBot",
+    user_agent="RelevantMovieDetailsPostBot",
     client_id=CLIENT,
     client_secret=SECRET,
     username=USERNAME,
@@ -63,8 +63,8 @@ def restart(handler: Callable):
 
 @restart
 def run(
-    circlejerk_sub_name: str = "anarchychess",
-    original_sub_name: str = "chess",
+    circlejerk_sub_name: str = "shittymoviedetails",
+    original_sub_name: str = "MovieDetails",
     quiet_mode: bool = False,
     add_os_comment: bool = True,
     certainty_threshold: float = CERTAINTY_THRESHOLD,
