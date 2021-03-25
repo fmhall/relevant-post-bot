@@ -1,10 +1,9 @@
 import os
-from typing import Tuple, Union, List
+from typing import Tuple, List
 from praw import Reddit
 from praw.models import Submission
 from praw.models import Subreddit
 from praw.models import Comment
-from praw.models import ListingGenerator
 from dotenv import load_dotenv
 import numpy as np
 import pickledb
@@ -37,8 +36,10 @@ reddit = Reddit(
 CERTAINTY_THRESHOLD = 0.50
 SIMILARITY_THRESHOLD = 0.40
 
-GITHUB_TAG = "[^(fmhall)](https://www.reddit.com/user/fmhall) ^| [^(github)]({})\n".format(
-    "https://github.com/fmhall/relevant-post-bot"
+GITHUB_TAG = (
+    "[^(fmhall)](https://www.reddit.com/user/fmhall) ^| [^(github)]({})\n".format(
+        "https://github.com/fmhall/relevant-post-bot"
+    )
 )
 log_format = "%(asctime)s: %(threadName)s: %(message)s"
 logging.basicConfig(format=log_format, level=logging.INFO, datefmt="%H:%M:%S")
@@ -103,9 +104,15 @@ def run(
                 continue
 
             # Log useful stats
-            logger.info(f"Minimum distance: {min_distance}",)
-            logger.info(f"Maximum length: {max_length}",)
-            logger.info(f"Similarity: {similarity}",)
+            logger.info(
+                f"Minimum distance: {min_distance}",
+            )
+            logger.info(
+                f"Maximum length: {max_length}",
+            )
+            logger.info(
+                f"Similarity: {similarity}",
+            )
             logger.info(f"CJ title: {cj_post.title}")
             logger.info(f"RP title: {relevant_post.title}")
             logger.info(f"Certainty: {certainty}")
@@ -141,7 +148,8 @@ def run(
 
 
 def add_circlejerk_comment(
-    cj_post: Submission, relevant_post: Submission, certainty: float) -> None:
+    cj_post: Submission, relevant_post: Submission, certainty: float
+) -> None:
     """
     Adds a comment to the circlejerk_sub post. If anyone knows how to format it so my username is also superscripted,
     please submit a PR.
@@ -155,8 +163,8 @@ def add_circlejerk_comment(
     if relevant_post.over_18:
         nsfw_tag = "[NSFW] "
     reply_template = "Relevant r/{} post: [{}{}](https://www.reddit.com{})\n\n".format(
-        nsfw_tag,
         relevant_post.subreddit.display_name,
+        nsfw_tag,
         relevant_post.title,
         relevant_post.permalink,
     )
@@ -230,21 +238,6 @@ def add_original_sub_comment(relevant_post: Submission, cj_post: Submission) -> 
                             logger.info("Comment deleted")
                     else:
                         logger.info("Comment is the same as last time, not editing")
-
-
-def modify_exisiting_comment(
-    comment: Comment, comment_string: str, post_tags: List[str]
-) -> None:
-    logger.debug(comment.body)
-    if comment_string != comment.body:
-        if len(post_tags) > 0:
-            comment.edit(comment_string)
-            logger.info(f"edited {comment_string}")
-        else:
-            comment.delete()
-            logger.info(f"Comment deleted: {comment_string}")
-    else:
-        logger.info("Comment is the same as last time, not editing")
 
 
 def get_min_levenshtein(
@@ -361,7 +354,12 @@ if __name__ == "__main__":
     threads = []
     chess_thread = threading.Thread(target=run, args=(), name="chess")
     tame_impala_thread = threading.Thread(
-        target=run, args=("tameimpalacirclejerk", "tameimpala",), name="tame_impala"
+        target=run,
+        args=(
+            "tameimpalacirclejerk",
+            "tameimpala",
+        ),
+        name="tame_impala",
     )
     vexillology_thread = threading.Thread(
         target=run,
@@ -380,6 +378,9 @@ if __name__ == "__main__":
     cricket_thread = threading.Thread(
         target=run, args=("CricketShitpost", "Cricket"), name="cricket"
     )
+    soccer_thread = threading.Thread(
+        target=run, args=("soccercirclejerk", "soccer"), name="soccer"
+    )
     cleanup_thread = threading.Thread(
         target=delete_bad_comments, args=[USERNAME], name="cleanup"
     )
@@ -391,6 +392,7 @@ if __name__ == "__main__":
     threads.append(aviation_thread)
     threads.append(fly_fishing_thread)
     threads.append(cricket_thread)
+    threads.append(soccer_thread)
     threads.append(cleanup_thread)
 
     logger.info("Main    : Starting threads")
