@@ -1,9 +1,8 @@
 import os
-from typing import Tuple, List
+from typing import Tuple
 from praw import Reddit
 from praw.models import Submission
 from praw.models import Subreddit
-from praw.models import Comment
 from dotenv import load_dotenv
 import numpy as np
 import pickledb
@@ -361,11 +360,6 @@ if __name__ == "__main__":
         ),
         name="tame_impala",
     )
-    vexillology_thread = threading.Thread(
-        target=run,
-        args=("vexillologycirclejerk", "vexillology", False, True, 0.8),
-        name="vexillology",
-    )
     flying_thread = threading.Thread(
         target=run, args=("shittyaskflying", "flying"), name="flying"
     )
@@ -381,18 +375,21 @@ if __name__ == "__main__":
     soccer_thread = threading.Thread(
         target=run, args=("soccercirclejerk", "soccer"), name="soccer"
     )
+    chessbeginners_thread = threading.Thread(
+        target=run, args=("anarchychess", "chessbeginners"), name="chessbeginners"
+    )
     cleanup_thread = threading.Thread(
         target=delete_bad_comments, args=[USERNAME], name="cleanup"
     )
 
     threads.append(chess_thread)
     threads.append(tame_impala_thread)
-    threads.append(vexillology_thread)
     threads.append(flying_thread)
     threads.append(aviation_thread)
     threads.append(fly_fishing_thread)
     threads.append(cricket_thread)
     threads.append(soccer_thread)
+    threads.append(chessbeginners_thread)
     threads.append(cleanup_thread)
 
     logger.info("Main    : Starting threads")
