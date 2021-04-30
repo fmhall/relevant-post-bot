@@ -10,17 +10,16 @@ jobs:
     name: Build ➡️ Push ➡️ Deploy
     runs-on: ubuntu-latest
 
-    env:
-      CLIENT_ID: ${{ secrets.CLIENT_ID }}
-      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      USERNAME: ${{ secrets.USERNAME }}
-      PASSWORD: ${{ secrets.PASSWORD }}
-
     steps:
     - name: Checkout
       uses: actions/checkout@v2
 
     - name: Build the Docker image
+      env:
+        CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+        REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
       run: |
         docker build . --rm=false -t masonhall/relevant-post-bot:latest
         echo ${{ secrets.DOCKER_ACCESS_KEY }} | docker login --password-stdin --username masonhall
@@ -30,7 +29,7 @@ jobs:
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
+        username: ${{ secrets.SSH_USERNAME }}
         key: ${{ secrets.KEY }}
         script: |
           echo "Updating RP Bot..."
