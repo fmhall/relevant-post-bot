@@ -10,13 +10,19 @@ jobs:
     name: Build ➡️ Push ➡️ Deploy
     runs-on: ubuntu-latest
 
+    env:
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      USERNAME: ${{ secrets.USERNAME }}
+      PASSWORD: ${{ secrets.PASSWORD }}
+
     steps:
     - name: Checkout
       uses: actions/checkout@v2
 
     - name: Build the Docker image
       run: |
-        docker build . -t masonhall/relevant-post-bot:latest
+        docker build . -t masonhall/relevant-post-bot:latest --rm false
         echo ${{ secrets.DOCKER_ACCESS_KEY }} | docker login --password-stdin --username masonhall
         docker push masonhall/relevant-post-bot:latest
 
