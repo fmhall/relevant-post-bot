@@ -10,12 +10,6 @@ jobs:
     name: Build ➡️ Push ➡️ Deploy
     runs-on: ubuntu-latest
 
-    env:
-      CLIENT_ID: ${{ secrets.CLIENT_ID }}
-      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
-      REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
-
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -28,10 +22,16 @@ jobs:
 
     - name: Pull and deploy it from server
       uses: appleboy/ssh-action@master
+      env:
+        CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
+        REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
       with:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.SSH_USERNAME }}
         key: ${{ secrets.KEY }}
+        envs: CLIENT_ID,CLIENT_SECRET,REDDIT_USERNAME,REDDIT_PASSWORD
         script: |
           echo "Updating RP Bot..."
           docker pull masonhall/relevant-post-bot:latest
