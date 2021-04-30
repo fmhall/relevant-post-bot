@@ -33,4 +33,12 @@ jobs:
         key: ${{ secrets.KEY }}
         script: |
           echo "Updating RP Bot..."
-          ./update.sh
+          docker pull masonhall/relevant-post-bot:latest
+          docker rm -f bot
+          docker run --restart always -d --name bot \
+          --volume /home/ec2-user/rp_bot_posts.db:/app/src/chess_posts.db \
+          --env $CLIENT_ID \
+          --env $CLIENT_SECRET \
+          --env USERNAME=$REDDIT_USERNAME \
+          --env PASSWORD=$REDDIT_PASSWORD \
+          masonhall/relevant-post-bot:latest
