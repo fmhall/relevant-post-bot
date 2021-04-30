@@ -2,11 +2,12 @@ name: Docker Image CI
 
 on:
   push:
+    branches: master
 
 jobs:
 
   build:
-    name: Build Docker image
+    name: Build ➡️ Push ➡️ Deploy
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +20,7 @@ jobs:
         echo ${{ secrets.DOCKER_ACCESS_KEY }} | docker login --password-stdin --username masonhall
         docker push masonhall/relevant-post-bot:latest
 
-    - name: executing remote ssh commands using password
+    - name: Pull and deploy it from server
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.HOST }}
