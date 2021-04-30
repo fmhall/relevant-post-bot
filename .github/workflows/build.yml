@@ -15,7 +15,9 @@ jobs:
 
     - name: Build the Docker image
       run: |
-        ./build.sh
+        docker build . -t masonhall/relevant-post-bot:latest
+        echo ${{ secrets.DOCKER_ACCESS_KEY }} | docker login --password-stdin --username masonhall
+        docker push masonhall/relevant-post-bot:latest
 
     - name: executing remote ssh commands using password
       uses: appleboy/ssh-action@master
