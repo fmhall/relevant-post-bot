@@ -378,6 +378,9 @@ if __name__ == "__main__":
     chessbeginners_thread = threading.Thread(
         target=run, args=("anarchychess", "chessbeginners"), name="chessbeginners"
     )
+    mapporn_thread = threading.Thread(
+        target=run, args=("mapporncirclejerk", "mapporn"), name="mapporn"
+    )
     cleanup_thread = threading.Thread(
         target=delete_bad_comments, args=[USERNAME], name="cleanup"
     )
@@ -390,6 +393,7 @@ if __name__ == "__main__":
     threads.append(cricket_thread)
     threads.append(soccer_thread)
     threads.append(chessbeginners_thread)
+    threads.append(mapporn_thread)
     threads.append(cleanup_thread)
 
     logger.info("Main    : Starting threads")
