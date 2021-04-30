@@ -1,0 +1,31 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: master
+
+jobs:
+
+  build:
+    name: Build ➡️ Push ➡️ Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build the Docker image
+      run: |
+        docker build . -t masonhall/relevant-post-bot:latest
+        echo ${{ secrets.DOCKER_ACCESS_KEY }} | docker login --password-stdin --username masonhall
+        docker push masonhall/relevant-post-bot:latest
+
+    - name: Pull and deploy it from server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.KEY }}
+        script: |
+          echo "Updating RP Bot..."
+          ./update.sh
