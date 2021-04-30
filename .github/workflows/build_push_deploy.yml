@@ -22,7 +22,7 @@ jobs:
 
     - name: Build the Docker image
       run: |
-        docker build . -t masonhall/relevant-post-bot:latest
+        docker build . -t masonhall/relevant-post-bot:latest --rm false
         echo ${{ secrets.DOCKER_ACCESS_KEY }} | docker login --password-stdin --username masonhall
         docker push masonhall/relevant-post-bot:latest
 
