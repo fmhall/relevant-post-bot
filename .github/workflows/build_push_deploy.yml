@@ -10,6 +10,12 @@ jobs:
     name: Build ➡️ Push ➡️ Deploy
     runs-on: ubuntu-latest
 
+    env:
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      USERNAME: ${{ secrets.USERNAME }}
+      PASSWORD: ${{ secrets.PASSWORD }}
+
     steps:
     - name: Checkout
       uses: actions/checkout@v2
