@@ -1,0 +1,26 @@
+name: Docker Image CI
+
+on:
+  push:
+
+jobs:
+
+  build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build the Docker image
+      run: |
+        ./build.sh
+
+    - name: executing remote ssh commands using password
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.KEY }}
+        script: whoami
