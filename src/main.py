@@ -63,8 +63,8 @@ def restart(handler: Callable):
 
 @restart
 def run(
-    circlejerk_sub_name: str = "anarchychess",
-    original_sub_name: str = "chess",
+    circlejerk_sub_name: str,
+    original_sub_name: str,
     quiet_mode: bool = False,
     add_os_comment: bool = True,
     certainty_threshold: float = CERTAINTY_THRESHOLD,
@@ -351,49 +351,22 @@ def delete_bad_comments(username: str):
 if __name__ == "__main__":
     logger.info("Main    : Creating threads")
     threads = []
-    chess_thread = threading.Thread(target=run, args=(), name="chess")
-    tame_impala_thread = threading.Thread(
-        target=run,
-        args=(
-            "tameimpalacirclejerk",
-            "tameimpala",
-        ),
-        name="tame_impala",
-    )
-    flying_thread = threading.Thread(
-        target=run, args=("shittyaskflying", "flying"), name="flying"
-    )
-    aviation_thread = threading.Thread(
-        target=run, args=("shittyaskflying", "aviation", False, False), name="aviation"
-    )
-    fly_fishing_thread = threading.Thread(
-        target=run, args=("flyfishingcirclejerk", "flyfishing"), name="fly_fishing"
-    )
-    cricket_thread = threading.Thread(
-        target=run, args=("CricketShitpost", "Cricket"), name="cricket"
-    )
-    soccer_thread = threading.Thread(
-        target=run, args=("soccercirclejerk", "soccer"), name="soccer"
-    )
-    chessbeginners_thread = threading.Thread(
-        target=run, args=("anarchychess", "chessbeginners"), name="chessbeginners"
-    )
-    mapporn_thread = threading.Thread(
-        target=run, args=("mapporncirclejerk", "mapporn"), name="mapporn"
-    )
+    
+    # Create threads from subreddits.txt
+    with open("src/subreddits.txt", "r") as file:
+        for subreddit_pair in list(file):
+            circlejerk, original = subreddit_pair\
+                .replace(" ","").replace("\n","").split(",")
+            thread = threading.Thread(
+                target=run,
+                args=(circlejerk, original),
+                name=f"{circlejerk} {original}"
+            )
+            threads.append(thread)
+
     cleanup_thread = threading.Thread(
         target=delete_bad_comments, args=[USERNAME], name="cleanup"
     )
-
-    threads.append(chess_thread)
-    threads.append(tame_impala_thread)
-    threads.append(flying_thread)
-    threads.append(aviation_thread)
-    threads.append(fly_fishing_thread)
-    threads.append(cricket_thread)
-    threads.append(soccer_thread)
-    threads.append(chessbeginners_thread)
-    threads.append(mapporn_thread)
     threads.append(cleanup_thread)
 
     logger.info("Main    : Starting threads")
