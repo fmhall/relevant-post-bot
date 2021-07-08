@@ -353,7 +353,7 @@ if __name__ == "__main__":
     threads = []
     
     # Create threads from subreddits.txt
-    with open("src/subreddits.txt", "r") as file:
+    with open("subreddits.txt", "r") as file:
         for subreddit_pair in list(file):
             circlejerk, original = subreddit_pair\
                 .replace(" ","").replace("\n","").split(",")
