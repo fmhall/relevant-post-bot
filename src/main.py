@@ -387,6 +387,9 @@ if __name__ == "__main__":
     math_thread = threading.Thread(
         target=run, args=("AnarchyMath", "Math"), name="math"
     )
+    ftb_thread = threading.Thread(
+        target=run, args=("feedthememes", "feedthebeast"), name="ftb"
+    )
     cleanup_thread = threading.Thread(
         target=delete_bad_comments, args=[USERNAME], name="cleanup"
     )
@@ -402,6 +405,7 @@ if __name__ == "__main__":
     threads.append(mapporn_thread)
     threads.append(climbing_thread)
     threads.append(math_thread)
+    threads.append(ftb_thread)
     threads.append(cleanup_thread)
 
     logger.info("Main    : Starting threads")
