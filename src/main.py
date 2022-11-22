@@ -353,12 +353,7 @@ if __name__ == "__main__":
     threads = []
     chess_thread = threading.Thread(target=run, args=(), name="chess")
     tame_impala_thread = threading.Thread(
-        target=run,
-        args=(
-            "tameimpalacirclejerk",
-            "tameimpala",
-        ),
-        name="tame_impala",
+        target=run, args=("tameimpalacirclejerk", "tameimpala"), name="tame_impala"
     )
     flying_thread = threading.Thread(
         target=run, args=("shittyaskflying", "flying"), name="flying"
@@ -387,6 +382,9 @@ if __name__ == "__main__":
     math_thread = threading.Thread(
         target=run, args=("AnarchyMath", "Math"), name="math"
     )
+    mtg_thread = threading.Thread(
+        target=run, args=("magicthecirclejerking", "magicTCG"), name="mtg"
+    )
     cleanup_thread = threading.Thread(
         target=delete_bad_comments, args=[USERNAME], name="cleanup"
     )
@@ -402,6 +400,7 @@ if __name__ == "__main__":
     threads.append(mapporn_thread)
     threads.append(climbing_thread)
     threads.append(math_thread)
+    threads.append(mtg_thread)
     threads.append(cleanup_thread)
 
     logger.info("Main    : Starting threads")
