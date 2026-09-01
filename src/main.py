@@ -95,6 +95,13 @@ def run(
             # Certainty is calculated with this arbitrary formula that seems to work well
             certainty = 1 - (min_distance / max_length)
             old_certainty = similarity * 1 - (min_distance / max_length)
+            # A parody post must have been posted after the original post
+            if cj_post.created_utc <= relevant_post.created_utc:
+                logger.info(
+                    f"Parody post {cj_post.id} is not after the original post "
+                    f"{relevant_post.id}, not commenting"
+                )
+                continue
             # Continue to next post if crosspost
             if (
                 is_crosspost(cj_post, relevant_post)
